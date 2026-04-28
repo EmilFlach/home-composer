@@ -20,7 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -90,27 +90,32 @@ fun DashboardHeader(
                 onSelect = onSelectDashboard,
                 modifier = Modifier.weight(1f, fill = false),
             )
-            IconButton(
-                onClick = onToggleDarkMode,
-                modifier = Modifier.size(36.dp),
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(0.dp),
             ) {
-                Icon(
-                    imageVector = if (darkTheme) Icons.Filled.LightMode else Icons.Filled.DarkMode,
-                    contentDescription = if (darkTheme) "Light mode" else "Dark mode",
-                    modifier = Modifier.size(20.dp),
-                    tint = Color.White.copy(alpha = 0.75f),
-                )
-            }
-            IconButton(
-                onClick = onLogout,
-                modifier = Modifier.size(36.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Logout,
-                    contentDescription = "Log out",
-                    modifier = Modifier.size(20.dp),
-                    tint = Color.White.copy(alpha = 0.75f),
-                )
+                IconButton(
+                    onClick = onToggleDarkMode,
+                    modifier = Modifier.size(36.dp),
+                ) {
+                    Icon(
+                        imageVector = if (darkTheme) Icons.Filled.LightMode else Icons.Filled.DarkMode,
+                        contentDescription = if (darkTheme) "Light mode" else "Dark mode",
+                        modifier = Modifier.size(20.dp),
+                        tint = Color.White.copy(alpha = 0.75f),
+                    )
+                }
+                IconButton(
+                    onClick = onLogout,
+                    modifier = Modifier.size(36.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Logout,
+                        contentDescription = "Log out",
+                        modifier = Modifier.size(20.dp),
+                        tint = Color.White.copy(alpha = 0.75f),
+                    )
+                }
             }
         }
     }

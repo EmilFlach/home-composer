@@ -88,6 +88,7 @@ fun App() {
                         state = state,
                         onEvent = viewModel::onEvent,
                         darkTheme = darkTheme,
+                        onToggleDarkMode = { darkTheme = !darkTheme },
                     )
                 }
                 entry<Dashboard> {

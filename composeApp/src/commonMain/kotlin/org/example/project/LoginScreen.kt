@@ -2,7 +2,6 @@ package org.example.project
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -13,9 +12,14 @@ import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -52,6 +56,7 @@ fun LoginScreen(
     state: LoginUiState,
     onEvent: (LoginEvent) -> Unit,
     darkTheme: Boolean = false,
+    onToggleDarkMode: () -> Unit = {},
 ) {
     var showConnectSheet by remember { mutableStateOf(false) }
     val showcase = remember { buildShowcaseEntityStates() }
@@ -77,31 +82,57 @@ fun LoginScreen(
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize().then(backgroundModifier).safeContentPadding()) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .then(backgroundModifier)
+            .safeContentPadding(),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 20.dp, end = 8.dp, top = 16.dp, bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = "home composer",
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = MaterialTheme.typography.headlineMedium.fontSize * 1.3f,
+                    ),
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    text = "Your smart home, beautifully connected",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontSize = MaterialTheme.typography.bodySmall.fontSize * 1.3f,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            IconButton(onClick = onToggleDarkMode, modifier = Modifier.size(40.dp)) {
+                Icon(
+                    imageVector = if (darkTheme) Icons.Filled.LightMode else Icons.Filled.DarkMode,
+                    contentDescription = if (darkTheme) "Light mode" else "Dark mode",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            Button(onClick = { showConnectSheet = true }) {
+                Text("Connect")
+            }
+        }
+
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(14.dp),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 40.dp, bottom = 100.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 24.dp),
         ) {
-            item {
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Text(
-                        text = "home composer",
-                        style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    Text(
-                        text = "Your smart home, beautifully connected",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-
             item { ShowcaseLabel("Preview") }
 
             item {
@@ -152,16 +183,6 @@ fun LoginScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-        }
-
-        Button(
-            onClick = { showConnectSheet = true },
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 24.dp),
-        ) {
-            Text("Connect to Home Assistant", style = MaterialTheme.typography.labelLarge)
         }
     }
 

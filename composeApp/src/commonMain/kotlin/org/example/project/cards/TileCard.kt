@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.ToggleOn
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.WbTwilight
 import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material.icons.filled.Window
 import androidx.compose.material3.Card
@@ -463,6 +464,7 @@ private fun humanizeState(raw: String, domain: String): String {
 
 private fun iconFor(state: HaEntityState?, entityId: String?): ImageVector {
     val domain = state?.domain ?: entityId?.substringBefore('.', missingDelimiterValue = "") ?: ""
+    val id = state?.entityId ?: entityId ?: ""
     val isOn = state?.isActive() ?: false
     return when (domain) {
         "light" -> Icons.Filled.Lightbulb
@@ -473,7 +475,9 @@ private fun iconFor(state: HaEntityState?, entityId: String?): ImageVector {
         "climate", "water_heater" -> Icons.Filled.Thermostat
         "media_player" -> Icons.Filled.PlayArrow
         "binary_sensor" -> Icons.Filled.MotionPhotosOn
-        "sensor" -> Icons.Filled.Sensors
+        "sensor" -> if ("sunrise" in id || "sunset" in id || "dawn" in id || "dusk" in id ||
+            "next_rising" in id || "next_setting" in id) Icons.Filled.WbTwilight
+        else Icons.Filled.Sensors
         "person", "device_tracker" -> Icons.Filled.Person
         "automation", "script" -> Icons.Filled.Power
         "weather" -> Icons.Filled.WbSunny
