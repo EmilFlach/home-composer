@@ -21,6 +21,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,13 +31,48 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
+import org.example.project.auth.ConnectionStatus
+import org.example.project.auth.HomeAssistantClient
+import org.example.project.auth.HomeAssistantConfig
 
 private val TWO_COLUMN_THRESHOLD: Dp = 450.dp
+private const val CONNECTION_POLL_INTERVAL_MS = 30_000L
 
 @Composable
 fun DashboardScreen(
+    config: HomeAssistantConfig,
+    client: HomeAssistantClient,
     darkTheme: Boolean = false,
-    onToggleDarkMode: () -> Unit = {}
+    onToggleDarkMode: () -> Unit = {},
+) {
+    var connectionStatus by remember { mutableStateOf<ConnectionStatus>(ConnectionStatus.Checking) }
+    LaunchedEffect(config) {
+        while (true) {
+            connectionStatus = ConnectionStatus.Checking
+            client.verify(config)
+                .onSuccess { connectionStatus = ConnectionStatus.Connected }
+                .onFailure {
+                    connectionStatus = ConnectionStatus.Disconnected(it.message ?: "Unknown error")
+                }
+            delay(CONNECTION_POLL_INTERVAL_MS)
+        }
+    }
+    Column(modifier = Modifier.fillMaxSize()) {
+        DashboardContent(
+            modifier = Modifier.weight(1f),
+            darkTheme = darkTheme,
+            onToggleDarkMode = onToggleDarkMode,
+        )
+        ConnectionStatusBar(status = connectionStatus, baseUrl = config.baseUrl)
+    }
+}
+
+@Composable
+private fun DashboardContent(
+    modifier: Modifier = Modifier,
+    darkTheme: Boolean,
+    onToggleDarkMode: () -> Unit,
 ) {
     var livingRoomBrightness by remember { mutableStateOf(0.75f) }
     var bedroomBrightness by remember { mutableStateOf(0.4f) }
@@ -60,8 +96,8 @@ fun DashboardScreen(
     }
 
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
+        modifier = modifier
+            .fillMaxWidth()
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(vertical = 16.dp)
