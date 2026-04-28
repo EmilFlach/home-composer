@@ -74,11 +74,13 @@ fun DashboardScreen(
     val dashboards by wsClient.dashboards.collectAsStateWithLifecycle()
     val dashboardConfigs by wsClient.dashboardConfigs.collectAsStateWithLifecycle()
     val dashboardErrors by wsClient.dashboardErrors.collectAsStateWithLifecycle()
+    val entityStates by wsClient.entityStates.collectAsStateWithLifecycle()
     Column(modifier = Modifier.fillMaxSize()) {
         LovelaceDashboardList(
             dashboards = dashboards,
             configs = dashboardConfigs,
             errors = dashboardErrors,
+            entityStates = entityStates,
             darkTheme = darkTheme,
             onToggleDarkMode = onToggleDarkMode,
             modifier = Modifier.weight(1f),

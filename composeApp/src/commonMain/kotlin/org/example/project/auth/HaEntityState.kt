@@ -1,0 +1,32 @@
+package org.example.project.auth
+
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
+
+@Serializable
+data class HaEntityState(
+    @SerialName("entity_id") val entityId: String,
+    val state: String,
+    val attributes: JsonObject = JsonObject(emptyMap()),
+    @SerialName("last_changed") val lastChanged: String? = null,
+    @SerialName("last_updated") val lastUpdated: String? = null,
+)
+
+val HaEntityState.domain: String
+    get() = entityId.substringBefore('.', missingDelimiterValue = "")
+
+val HaEntityState.friendlyName: String?
+    get() = (attributes["friendly_name"] as? JsonPrimitive)?.contentOrNull
+
+val HaEntityState.unitOfMeasurement: String?
+    get() = (attributes["unit_of_measurement"] as? JsonPrimitive)?.contentOrNull
+
+val HaEntityState.icon: String?
+    get() = (attributes["icon"] as? JsonPrimitive)?.contentOrNull
+
+fun HaEntityState.attributeString(name: String): String? =
+    attributes[name]?.let { it as? JsonPrimitive }?.contentOrNull

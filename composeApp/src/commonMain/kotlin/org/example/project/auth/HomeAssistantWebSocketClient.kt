@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
@@ -32,6 +33,9 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
 
     private val _dashboardErrors = MutableStateFlow<Map<String, String>>(emptyMap())
     val dashboardErrors: StateFlow<Map<String, String>> = _dashboardErrors.asStateFlow()
+
+    private val _entityStates = MutableStateFlow<Map<String, HaEntityState>>(emptyMap())
+    val entityStates: StateFlow<Map<String, HaEntityState>> = _entityStates.asStateFlow()
 
     suspend fun connect(config: HomeAssistantConfig) {
         var nextId = 1L
@@ -61,9 +65,13 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
                         pendingRequests[defaultConfigId] = PendingRequest.DashboardConfig(DEFAULT_DASHBOARD_KEY)
                         send(Frame.Text("""{"id":$defaultConfigId,"type":"lovelace/config"}"""))
 
+                        val statesId = nextId++
+                        pendingRequests[statesId] = PendingRequest.GetStates
+                        send(Frame.Text("""{"id":$statesId,"type":"get_states"}"""))
+
                         val subId = nextId++
                         pendingRequests[subId] = PendingRequest.SubscribeEvents
-                        send(Frame.Text("""{"id":$subId,"type":"subscribe_events"}"""))
+                        send(Frame.Text("""{"id":$subId,"type":"subscribe_events","event_type":"state_changed"}"""))
                     }
 
                     "auth_invalid" -> error("Authentication failed")
@@ -112,7 +120,33 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
                                 }
                             }
 
+                            PendingRequest.GetStates -> {
+                                val list = runCatching {
+                                    json.decodeFromJsonElement<List<HaEntityState>>(result)
+                                }.getOrElse { emptyList() }
+                                _entityStates.value = list.associateBy { it.entityId }
+                            }
+
                             PendingRequest.SubscribeEvents -> Unit
+                        }
+                    }
+
+                    "event" -> {
+                        val event = element["event"]?.jsonObject ?: continue
+                        val eventType = event["event_type"]?.jsonPrimitive?.contentOrNull
+                        if (eventType != "state_changed") continue
+                        val data = event["data"]?.jsonObject ?: continue
+                        val entityId = data["entity_id"]?.jsonPrimitive?.contentOrNull ?: continue
+                        val newState = data["new_state"]
+                        if (newState == null || newState is JsonNull) {
+                            _entityStates.value = _entityStates.value - entityId
+                        } else {
+                            val parsed = runCatching {
+                                json.decodeFromJsonElement<HaEntityState>(newState)
+                            }.getOrNull()
+                            if (parsed != null) {
+                                _entityStates.value = _entityStates.value + (entityId to parsed)
+                            }
                         }
                     }
                 }
@@ -123,6 +157,7 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
     private sealed interface PendingRequest {
         data object DashboardsList : PendingRequest
         data class DashboardConfig(val key: String) : PendingRequest
+        data object GetStates : PendingRequest
         data object SubscribeEvents : PendingRequest
     }
 }
