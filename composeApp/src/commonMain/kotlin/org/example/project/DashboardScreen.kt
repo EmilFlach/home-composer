@@ -1,42 +1,47 @@
 package org.example.project
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Air
-import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Bathroom
+import androidx.compose.material.icons.filled.Bathtub
+import androidx.compose.material.icons.filled.Bed
+import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.DinnerDining
-import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Kitchen
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.MeetingRoom
+import androidx.compose.material.icons.filled.MotionPhotosOn
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Thermostat
+import androidx.compose.material.icons.filled.WaterDrop
+import androidx.compose.material.icons.filled.Weekend
 import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material.icons.filled.Yard
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import org.example.project.auth.ConnectionStatus
 import org.example.project.auth.HomeAssistantClient
 import org.example.project.auth.HomeAssistantConfig
-
-private val TWO_COLUMN_THRESHOLD: Dp = 450.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.filled.Blinds
+import androidx.compose.material.icons.outlined.Bathroom
 private const val CONNECTION_POLL_INTERVAL_MS = 30_000L
 
 @Composable
@@ -74,200 +79,237 @@ private fun DashboardContent(
     darkTheme: Boolean,
     onToggleDarkMode: () -> Unit,
 ) {
-    var livingRoomBrightness by remember { mutableStateOf(0.75f) }
-    var bedroomBrightness by remember { mutableStateOf(0.4f) }
+    val state = remember { DashboardState() }
+    var selectedEntity by remember { mutableStateOf<Pair<HomeEntity, HomeRoom>?>(null) }
 
-    var livingRoomShutter by remember { mutableStateOf(0.6f) }
-    var bedroomShutter by remember { mutableStateOf(0.0f) }
+    val rooms = rememberRooms(state)
 
-    var kitchenFan by remember { mutableStateOf(true) }
-    var gardenLights by remember { mutableStateOf(false) }
-    var heater by remember { mutableStateOf(true) }
-    var dishwasher by remember { mutableStateOf(false) }
-
-    val temperatureData = remember {
-        listOf(19.5f, 20.1f, 19.8f, 21.3f, 22.0f, 23.4f, 22.8f, 21.5f, 20.9f, 21.8f, 22.5f, 23.1f)
-    }
-    val humidityData = remember {
-        listOf(45f, 47f, 50f, 53f, 55f, 52f, 48f, 46f, 44f, 43f, 45f, 47f)
-    }
-    val timeLabels = remember {
-        listOf("00:00", "04:00", "08:00", "12:00", "16:00", "20:00", "23:59")
-    }
+    val bgModifier = if (darkTheme)
+        Modifier.background(NeonGradients.ScreenBackground)
+    else
+        Modifier.background(MaterialTheme.colorScheme.background)
 
     LazyColumn(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        contentPadding = PaddingValues(vertical = 16.dp)
+            .then(bgModifier),
+        verticalArrangement = Arrangement.spacedBy(40.dp),
+        contentPadding = PaddingValues(bottom = 24.dp)
     ) {
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Home", style = MaterialTheme.typography.headlineMedium)
-                IconButton(onClick = onToggleDarkMode) {
-                    Icon(
-                        imageVector = if (darkTheme) Icons.Filled.LightMode else Icons.Filled.DarkMode,
-                        contentDescription = if (darkTheme) "Switch to light mode" else "Switch to dark mode"
-                    )
-                }
-            }
+            DashboardHeader(
+                locationName = "Home",
+                outdoorTemp = state.gardenCurrentTemp,
+                darkTheme = darkTheme,
+                onToggleDarkMode = onToggleDarkMode
+            )
         }
 
-        item { SectionLabel("Sensors") }
+        items(rooms, key = { it.id }) { room ->
+            RoomCard(
+                room = room,
+                onEntityClick = { entity -> selectedEntity = entity to room },
+                onBrightnessChange = { brightness ->
+                    when (room.id) {
+                        "living_room" -> state.livingRoomBrightness = brightness
+                        "kitchen"     -> state.kitchenBrightness = brightness
+                        "dining_room" -> state.diningBrightness = brightness
+                        "bedroom"     -> state.bedroomBrightness = brightness
+                        "bathroom"    -> state.bathroomBrightness = brightness
+                        "office"      -> state.officeBrightness = brightness
+                        "hallway"     -> state.hallwayBrightness = brightness
+                        "garden"      -> state.gardenLightsBrightness = brightness
+                    }
+                },
+                onLightSliderTap = {
+                    room.entities
+                        .firstOrNull { it.state is EntityState.Light }
+                        ?.let { selectedEntity = it to room }
+                },
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .fillMaxWidth()
+            )
+        }
 
         item {
+            SectionLabel("Sensors", modifier = Modifier.padding(horizontal = 16.dp))
             GraphCard(
                 title = "Temperature",
                 unit = "°C",
-                currentValue = temperatureData.last(),
-                dataPoints = temperatureData,
-                timeLabels = timeLabels,
-                modifier = Modifier.fillMaxWidth()
+                currentValue = state.temperatureHistory.last(),
+                dataPoints = state.temperatureHistory,
+                timeLabels = state.timeLabels,
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .fillMaxWidth()
             )
         }
         item {
             GraphCard(
                 title = "Humidity",
                 unit = "%",
-                currentValue = humidityData.last(),
-                dataPoints = humidityData,
-                timeLabels = timeLabels,
-                color = Color(0xFF00BCD4),
-                modifier = Modifier.fillMaxWidth()
+                currentValue = state.humidityHistory.last(),
+                dataPoints = state.humidityHistory,
+                timeLabels = state.timeLabels,
+                color = NeonColors.NeonCyan,
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .fillMaxWidth()
             )
         }
+    }
 
-        item { SectionLabel("Lights") }
-
-        item {
-            TwoColumnAdaptive(
-                first = { mod ->
-                    BrightnessCard(
-                        name = "Living Room",
-                        brightness = livingRoomBrightness,
-                        onBrightnessChange = { livingRoomBrightness = it },
-                        modifier = mod
-                    )
-                },
-                second = { mod ->
-                    BrightnessCard(
-                        name = "Bedroom",
-                        brightness = bedroomBrightness,
-                        onBrightnessChange = { bedroomBrightness = it },
-                        modifier = mod
-                    )
-                }
-            )
-        }
-
-        item { SectionLabel("Shutters") }
-
-        item {
-            TwoColumnAdaptive(
-                first = { mod ->
-                    ShutterCard(
-                        name = "Living Room",
-                        position = livingRoomShutter,
-                        onOpen = { livingRoomShutter = 0f },
-                        onStop = { },
-                        onClose = { livingRoomShutter = 1f },
-                        modifier = mod
-                    )
-                },
-                second = { mod ->
-                    ShutterCard(
-                        name = "Bedroom",
-                        position = bedroomShutter,
-                        onOpen = { bedroomShutter = 0f },
-                        onStop = { },
-                        onClose = { bedroomShutter = 1f },
-                        modifier = mod
-                    )
-                }
-            )
-        }
-
-        item { SectionLabel("Switches") }
-
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                TwoColumnAdaptive(
-                    first = { mod ->
-                        ToggleCard(
-                            name = "Kitchen Fan",
-                            icon = Icons.Filled.Air,
-                            isOn = kitchenFan,
-                            onToggle = { kitchenFan = it },
-                            modifier = mod
-                        )
-                    },
-                    second = { mod ->
-                        ToggleCard(
-                            name = "Garden Lights",
-                            icon = Icons.Filled.Yard,
-                            isOn = gardenLights,
-                            onToggle = { gardenLights = it },
-                            modifier = mod
-                        )
-                    }
-                )
-                TwoColumnAdaptive(
-                    first = { mod ->
-                        ToggleCard(
-                            name = "Heater",
-                            icon = Icons.Filled.Whatshot,
-                            isOn = heater,
-                            onToggle = { heater = it },
-                            modifier = mod
-                        )
-                    },
-                    second = { mod ->
-                        ToggleCard(
-                            name = "Dishwasher",
-                            icon = Icons.Filled.DinnerDining,
-                            isOn = dishwasher,
-                            onToggle = { dishwasher = it },
-                            modifier = mod
-                        )
-                    }
-                )
-            }
-        }
+    selectedEntity?.let { (entity, room) ->
+        EntityDetailSheet(
+            entity = entity,
+            room = room,
+            state = state,
+            onDismiss = { selectedEntity = null }
+        )
     }
 }
 
 @Composable
-private fun TwoColumnAdaptive(
-    modifier: Modifier = Modifier,
-    first: @Composable (Modifier) -> Unit,
-    second: @Composable (Modifier) -> Unit,
+private fun rememberRooms(state: DashboardState): List<HomeRoom> = remember(
+    state.livingRoomLightOn, state.livingRoomBrightness, state.livingRoomColorTemp,
+    state.livingRoomShutter, state.livingRoomPresence, state.livingRoomClimateMode,
+    state.livingRoomCurrentTemp, state.livingRoomMediaPlaying,
+    state.kitchenLightOn, state.kitchenBrightness, state.kitchenFanOn,
+    state.kitchenDishwasherOn, state.kitchenCurrentTemp,
+    state.diningLightOn, state.diningBrightness, state.diningShutter, state.diningCurrentTemp,
+    state.bedroomLightOn, state.bedroomBrightness, state.bedroomShutter,
+    state.bedroomPresence, state.bedroomCurrentTemp,
+    state.bathroomLightOn, state.bathroomBrightness, state.bathroomHeaterOn,
+    state.bathroomCurrentTemp, state.bathroomHumidity,
+    state.officeLightOn, state.officeBrightness, state.officeClimateMode,
+    state.officePresence, state.officeCurrentTemp,
+    state.hallwayLightOn, state.hallwayBrightness, state.hallwayMotion,
+    state.gardenLightsOn, state.gardenLightsBrightness, state.gardenCurrentTemp, state.gardenMotion
 ) {
-    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        if (maxWidth >= TWO_COLUMN_THRESHOLD) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                first(Modifier.weight(1f))
-                second(Modifier.weight(1f))
-            }
-        } else {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                first(Modifier.fillMaxWidth())
-                second(Modifier.fillMaxWidth())
-            }
-        }
-    }
+    listOf(
+        HomeRoom(
+            id = "living_room",
+            name = "Living Room",
+            icon = Icons.Filled.Weekend,
+            entities = listOf(
+                HomeEntity("lr_light", "Light", Icons.Filled.Lightbulb,
+                    EntityState.Light(state.livingRoomLightOn, state.livingRoomBrightness, state.livingRoomColorTemp)),
+                HomeEntity("lr_shutter", "Blinds", Icons.Filled.Blinds,
+                    EntityState.Shutter(state.livingRoomShutter)),
+                HomeEntity("lr_presence", "Presence", Icons.Filled.Person,
+                    EntityState.Presence(state.livingRoomPresence)),
+                HomeEntity("lr_climate", "Climate", Icons.Filled.Thermostat,
+                    EntityState.Climate(state.livingRoomClimateMode, state.livingRoomCurrentTemp, state.livingRoomTargetTemp)),
+                HomeEntity("lr_media", "Media", Icons.Filled.PlayArrow,
+                    EntityState.MediaPlayer(state.livingRoomMediaPlaying, state.livingRoomTrack)),
+            )
+        ),
+        HomeRoom(
+            id = "kitchen",
+            name = "Kitchen",
+            icon = Icons.Filled.Kitchen,
+            entities = listOf(
+                HomeEntity("ki_light", "Light", Icons.Filled.Lightbulb,
+                    EntityState.Light(state.kitchenLightOn, state.kitchenBrightness, state.kitchenColorTemp)),
+                HomeEntity("ki_fan", "Fan", Icons.Filled.Air,
+                    EntityState.Switch(state.kitchenFanOn)),
+                HomeEntity("ki_dishwasher", "Dishwasher", Icons.Filled.DinnerDining,
+                    EntityState.Switch(state.kitchenDishwasherOn)),
+                HomeEntity("ki_temp", "Temp", Icons.Filled.Thermostat,
+                    EntityState.Sensor(state.kitchenCurrentTemp, "°C")),
+            )
+        ),
+        HomeRoom(
+            id = "dining_room",
+            name = "Dining Room",
+            icon = Icons.Filled.DinnerDining,
+            entities = listOf(
+                HomeEntity("dr_light", "Light", Icons.Filled.Lightbulb,
+                    EntityState.Light(state.diningLightOn, state.diningBrightness, state.diningColorTemp)),
+                HomeEntity("dr_shutter", "Blinds", Icons.Filled.Blinds,
+                    EntityState.Shutter(state.diningShutter)),
+                HomeEntity("dr_temp", "Temp", Icons.Filled.Thermostat,
+                    EntityState.Sensor(state.diningCurrentTemp, "°C")),
+            )
+        ),
+        HomeRoom(
+            id = "bedroom",
+            name = "Bedroom",
+            icon = Icons.Filled.Bed,
+            entities = listOf(
+                HomeEntity("be_light", "Light", Icons.Filled.Lightbulb,
+                    EntityState.Light(state.bedroomLightOn, state.bedroomBrightness, state.bedroomColorTemp)),
+                HomeEntity("be_shutter", "Blinds", Icons.Filled.Blinds,
+                    EntityState.Shutter(state.bedroomShutter)),
+                HomeEntity("be_presence", "Presence", Icons.Filled.Person,
+                    EntityState.Presence(state.bedroomPresence)),
+                HomeEntity("be_temp", "Temp", Icons.Filled.Thermostat,
+                    EntityState.Sensor(state.bedroomCurrentTemp, "°C")),
+            )
+        ),
+        HomeRoom(
+            id = "bathroom",
+            name = "Bathroom",
+            icon = Icons.Filled.Bathtub,
+            entities = listOf(
+                HomeEntity("ba_light", "Light", Icons.Filled.Lightbulb,
+                    EntityState.Light(state.bathroomLightOn, state.bathroomBrightness, state.bathroomColorTemp)),
+                HomeEntity("ba_heater", "Heater", Icons.Filled.Whatshot,
+                    EntityState.Switch(state.bathroomHeaterOn)),
+                HomeEntity("ba_temp", "Temp", Icons.Filled.Thermostat,
+                    EntityState.Sensor(state.bathroomCurrentTemp, "°C")),
+                HomeEntity("ba_humidity", "Humidity", Icons.Filled.WaterDrop,
+                    EntityState.Sensor(state.bathroomHumidity, "%")),
+            )
+        ),
+        HomeRoom(
+            id = "office",
+            name = "Office",
+            icon = Icons.Filled.Computer,
+            entities = listOf(
+                HomeEntity("of_light", "Light", Icons.Filled.Lightbulb,
+                    EntityState.Light(state.officeLightOn, state.officeBrightness, state.officeColorTemp)),
+                HomeEntity("of_climate", "Climate", Icons.Filled.Thermostat,
+                    EntityState.Climate(state.officeClimateMode, state.officeCurrentTemp, state.officeTargetTemp)),
+                HomeEntity("of_presence", "Presence", Icons.Filled.Person,
+                    EntityState.Presence(state.officePresence)),
+            )
+        ),
+        HomeRoom(
+            id = "hallway",
+            name = "Hallway",
+            icon = Icons.Filled.MeetingRoom,
+            entities = listOf(
+                HomeEntity("ha_light", "Light", Icons.Filled.Lightbulb,
+                    EntityState.Light(state.hallwayLightOn, state.hallwayBrightness, state.hallwayColorTemp)),
+                HomeEntity("ha_motion", "Motion", Icons.Filled.MotionPhotosOn,
+                    EntityState.Switch(state.hallwayMotion)),
+            )
+        ),
+        HomeRoom(
+            id = "garden",
+            name = "Garden",
+            icon = Icons.Filled.Yard,
+            entities = listOf(
+                HomeEntity("ga_lights", "Lights", Icons.Filled.Lightbulb,
+                    EntityState.Light(state.gardenLightsOn, state.gardenLightsBrightness, 0.5f)),
+                HomeEntity("ga_temp", "Temp", Icons.Filled.Thermostat,
+                    EntityState.Sensor(state.gardenCurrentTemp, "°C")),
+                HomeEntity("ga_motion", "Motion", Icons.Filled.MotionPhotosOn,
+                    EntityState.Switch(state.gardenMotion)),
+            )
+        ),
+    )
 }
 
 @Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text,
+private fun SectionLabel(text: String, modifier: Modifier = Modifier) {
+    androidx.compose.material3.Text(
+        text.uppercase(),
         style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(top = 4.dp)
+        color = NeonColors.NeonCyan,
+        letterSpacing = 2.sp,
+        modifier = modifier.padding(top = 8.dp, bottom = 4.dp)
     )
 }

@@ -30,9 +30,64 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
+
+@Composable
+fun ShutterCardContent(
+    name: String,
+    position: Float,
+    onOpen: () -> Unit,
+    onStop: () -> Unit,
+    onClose: () -> Unit,
+) {
+    val animatedPosition by animateFloatAsState(
+        targetValue = position,
+        animationSpec = tween(durationMillis = 600)
+    )
+    val accentColor = MaterialTheme.colorScheme.secondary
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(name, style = MaterialTheme.typography.titleMedium)
+            val statusText = when {
+                position < 0.05f -> "Open"
+                position > 0.95f -> "Closed"
+                else -> "${(position * 100).toInt()}%"
+            }
+            Text(statusText, style = MaterialTheme.typography.titleSmall, color = accentColor)
+        }
+        Canvas(modifier = Modifier.size(width = 72.dp, height = 88.dp)) {
+            val stroke = 4f
+            val innerW = size.width - stroke * 2
+            val innerH = size.height - stroke * 2
+            drawRoundRect(color = NeonColors.ShutterGlass, topLeft = Offset(stroke, stroke), size = Size(innerW, innerH), cornerRadius = CornerRadius(6f))
+            drawRoundRect(color = NeonColors.ShutterFrame, size = size, cornerRadius = CornerRadius(8f), style = Stroke(width = stroke))
+            drawRoundRect(color = accentColor.copy(alpha = 0.3f), size = size, cornerRadius = CornerRadius(8f), style = Stroke(width = stroke * 0.5f))
+            val covered = innerH * animatedPosition
+            val slatHeight = 9f; val slatGap = 1.5f; val period = slatHeight + slatGap
+            val numSlats = (covered / period).toInt() + 1
+            repeat(numSlats) { i ->
+                val top = stroke + i * period
+                val bottom = (top + slatHeight).coerceAtMost(stroke + covered)
+                if (bottom <= top) return@repeat
+                drawRect(color = NeonColors.ShutterSlat, topLeft = Offset(stroke, top), size = Size(innerW, bottom - top))
+                if (bottom - top > 3f) drawLine(color = NeonColors.ShutterNeonEdge.copy(alpha = 0.70f), start = Offset(stroke, top + 1.5f), end = Offset(stroke + innerW, top + 1.5f), strokeWidth = 1.5f)
+            }
+        }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilledTonalButton(onClick = onOpen, modifier = Modifier.weight(1f), contentPadding = PaddingValues(vertical = 8.dp, horizontal = 0.dp)) { Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "Open") }
+            OutlinedButton(onClick = onStop, modifier = Modifier.weight(1f), contentPadding = PaddingValues(vertical = 8.dp, horizontal = 0.dp)) { Icon(Icons.Filled.Stop, contentDescription = "Stop") }
+            FilledTonalButton(onClick = onClose, modifier = Modifier.weight(1f), contentPadding = PaddingValues(vertical = 8.dp, horizontal = 0.dp)) { Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Close") }
+        }
+    }
+}
 
 @Composable
 fun ShutterCard(
@@ -47,10 +102,11 @@ fun ShutterCard(
         targetValue = position,
         animationSpec = tween(durationMillis = 600)
     )
+    val accentColor = MaterialTheme.colorScheme.secondary
 
-    Card(modifier = modifier) {
+    Card(modifier = modifier.neonCardBorder()) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Row(
@@ -73,7 +129,7 @@ fun ShutterCard(
                 Text(
                     statusText,
                     style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = accentColor
                 )
             }
             Spacer(Modifier.height(12.dp))
@@ -82,21 +138,29 @@ fun ShutterCard(
                 val innerW = size.width - stroke * 2
                 val innerH = size.height - stroke * 2
 
-                // Glass background
+                // Deep dark glass background
                 drawRoundRect(
-                    color = Color(0xFFBBDEFB),
+                    color = NeonColors.ShutterGlass,
                     topLeft = Offset(stroke, stroke),
                     size = Size(innerW, innerH),
                     cornerRadius = CornerRadius(6f)
                 )
-                // Window frame
+                // Window frame (dark steel)
                 drawRoundRect(
-                    color = Color(0xFF78909C),
+                    color = NeonColors.ShutterFrame,
                     size = size,
                     cornerRadius = CornerRadius(8f),
                     style = Stroke(width = stroke)
                 )
-                // Shutter rolls down from top
+                // Neon corner glow on frame
+                drawRoundRect(
+                    color = accentColor.copy(alpha = 0.3f),
+                    size = size,
+                    cornerRadius = CornerRadius(8f),
+                    style = Stroke(width = stroke * 0.5f)
+                )
+
+                // Cyberpunk metallic shutter slats rolling down from top
                 val covered = innerH * animatedPosition
                 val slatHeight = 9f
                 val slatGap = 1.5f
@@ -106,18 +170,19 @@ fun ShutterCard(
                     val top = stroke + i * period
                     val bottom = (top + slatHeight).coerceAtMost(stroke + covered)
                     if (bottom <= top) return@repeat
+                    // Dark metallic slat body
                     drawRect(
-                        color = Color(0xFF8D6E63),
+                        color = NeonColors.ShutterSlat,
                         topLeft = Offset(stroke, top),
                         size = Size(innerW, bottom - top)
                     )
-                    // Slat highlight line
+                    // Neon electric-blue edge highlight at top of each slat
                     if (bottom - top > 3f) {
                         drawLine(
-                            color = Color(0xFFA1887F),
-                            start = Offset(stroke, top + 2f),
-                            end = Offset(stroke + innerW, top + 2f),
-                            strokeWidth = 1f
+                            color = NeonColors.ShutterNeonEdge.copy(alpha = 0.70f),
+                            start = Offset(stroke, top + 1.5f),
+                            end = Offset(stroke + innerW, top + 1.5f),
+                            strokeWidth = 1.5f
                         )
                     }
                 }
@@ -125,22 +190,22 @@ fun ShutterCard(
             Spacer(Modifier.height(12.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 FilledTonalButton(
                     onClick = onOpen,
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(0.dp)
+                    contentPadding = PaddingValues(vertical = 8.dp, horizontal = 0.dp)
                 ) { Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "Open") }
                 OutlinedButton(
                     onClick = onStop,
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(0.dp)
+                    contentPadding = PaddingValues(vertical = 8.dp, horizontal = 0.dp)
                 ) { Icon(Icons.Filled.Stop, contentDescription = "Stop") }
                 FilledTonalButton(
                     onClick = onClose,
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(0.dp)
+                    contentPadding = PaddingValues(vertical = 8.dp, horizontal = 0.dp)
                 ) { Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Close") }
             }
         }

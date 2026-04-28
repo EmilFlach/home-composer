@@ -10,6 +10,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -26,10 +27,11 @@ fun ToggleCard(
     onToggle: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(modifier = modifier) {
+    val accentColor = MaterialTheme.colorScheme.secondary
+    Card(modifier = modifier.neonCardBorder()) {
         Row(
             modifier = Modifier
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .padding(horizontal = 16.dp, vertical = 14.dp)
                 .fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
@@ -42,9 +44,8 @@ fun ToggleCard(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    modifier = Modifier.size(28.dp),
-                    tint = if (isOn) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurfaceVariant
+                    modifier = Modifier.size(30.dp),
+                    tint = if (isOn) accentColor else MaterialTheme.colorScheme.onSurface
                 )
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -56,12 +57,22 @@ fun ToggleCard(
                     Text(
                         if (isOn) "On" else "Off",
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (isOn) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurfaceVariant
+                        color = if (isOn) accentColor else MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
-            Switch(checked = isOn, onCheckedChange = onToggle)
+            Switch(
+                checked = isOn,
+                onCheckedChange = onToggle,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = accentColor,
+                    checkedTrackColor = accentColor.copy(alpha = 0.35f),
+                    checkedBorderColor = accentColor.copy(alpha = 0.55f),
+                    uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    uncheckedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                )
+            )
         }
     }
 }
