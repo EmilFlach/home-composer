@@ -22,8 +22,8 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonPrimitive
 import org.example.project.auth.HaEntityState
+
 
 @Composable
 fun LovelaceCard(
@@ -85,15 +85,15 @@ internal data class LovelaceCardConfig(
 internal fun JsonElement.toCardConfig(): LovelaceCardConfig {
     val obj = this as? JsonObject
         ?: return LovelaceCardConfig(null, null, null, null, null, emptyList(), 0, null)
-    val type = obj["type"]?.jsonPrimitive?.contentOrNull
-    val title = obj["title"]?.jsonPrimitive?.contentOrNull
-    val name = obj["name"]?.jsonPrimitive?.contentOrNull
-    val icon = obj["icon"]?.jsonPrimitive?.contentOrNull
-    val entity = obj["entity"]?.jsonPrimitive?.contentOrNull
+    val type = (obj["type"] as? JsonPrimitive)?.contentOrNull
+    val title = (obj["title"] as? JsonPrimitive)?.contentOrNull
+    val name = (obj["name"] as? JsonPrimitive)?.contentOrNull
+    val icon = (obj["icon"] as? JsonPrimitive)?.contentOrNull
+    val entity = (obj["entity"] as? JsonPrimitive)?.contentOrNull
     val entities = (obj["entities"] as? JsonArray)?.mapNotNull { e ->
         when (e) {
             is JsonPrimitive -> e.contentOrNull
-            is JsonObject -> e["entity"]?.jsonPrimitive?.contentOrNull
+            is JsonObject -> (e["entity"] as? JsonPrimitive)?.contentOrNull
             else -> null
         }
     }.orEmpty()

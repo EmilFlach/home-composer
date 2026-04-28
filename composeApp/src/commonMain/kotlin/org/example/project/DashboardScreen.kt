@@ -36,13 +36,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalUriHandler
 import kotlinx.coroutines.delay
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.example.project.auth.ConnectionStatus
 import org.example.project.auth.HomeAssistantClient
 import org.example.project.auth.HomeAssistantConfig
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.filled.Blinds
 import org.example.project.auth.HomeAssistantWebSocketClient
+import org.example.project.cards.HaAction
+import org.example.project.cards.LocalHaActionHandler
 
 private const val CONNECTION_POLL_INTERVAL_MS = 30_000L
 
@@ -76,23 +82,59 @@ fun DashboardScreen(
     val dashboardConfigs by wsClient.dashboardConfigs.collectAsStateWithLifecycle()
     val dashboardErrors by wsClient.dashboardErrors.collectAsStateWithLifecycle()
     val entityStates by wsClient.entityStates.collectAsStateWithLifecycle()
-    Column(modifier = Modifier.fillMaxSize()) {
-        LovelaceDashboardList(
-            dashboards = dashboards,
-            configs = dashboardConfigs,
-            errors = dashboardErrors,
-            entityStates = entityStates,
-            darkTheme = darkTheme,
-            onToggleDarkMode = onToggleDarkMode,
-            onLogout = onLogout,
-            modifier = Modifier.weight(1f),
-        )
-        ConnectionStatusBar(
-            status = connectionStatus,
-            baseUrl = config.baseUrl,
-            frameCount = frameCount,
-            latestFrame = latestFrame,
-        )
+    val uriHandler = LocalUriHandler.current
+    CompositionLocalProvider(
+        LocalHaActionHandler provides { action, contextEntity ->
+            when (action) {
+                is HaAction.None -> Unit
+                is HaAction.Toggle -> {
+                    val entityId = action.entity ?: contextEntity ?: return@provides
+                    val currentState = wsClient.entityStates.value[entityId]
+                    if (currentState != null) {
+                        val newStateStr = if (currentState.state == "on") "off" else "on"
+                        wsClient.setOptimisticState(entityId, currentState.copy(state = newStateStr))
+                    }
+                    wsClient.callService(
+                        domain = "homeassistant",
+                        service = "toggle",
+                        target = buildJsonObject { put("entity_id", entityId) },
+                    )
+                }
+                is HaAction.PerformAction -> {
+                    val parts = action.action.split(".", limit = 2)
+                    if (parts.size == 2) {
+                        wsClient.callService(
+                            domain = parts[0],
+                            service = parts[1],
+                            target = action.target,
+                            data = action.data,
+                        )
+                    }
+                }
+                is HaAction.OpenUrl -> uriHandler.openUri(action.url)
+                is HaAction.Navigate -> Unit
+                is HaAction.MoreInfo -> Unit
+            }
+        }
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            LovelaceDashboardList(
+                dashboards = dashboards,
+                configs = dashboardConfigs,
+                errors = dashboardErrors,
+                entityStates = entityStates,
+                darkTheme = darkTheme,
+                onToggleDarkMode = onToggleDarkMode,
+                onLogout = onLogout,
+                modifier = Modifier.weight(1f),
+            )
+            ConnectionStatusBar(
+                status = connectionStatus,
+                baseUrl = config.baseUrl,
+                frameCount = frameCount,
+                latestFrame = latestFrame,
+            )
+        }
     }
 }
 

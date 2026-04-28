@@ -4,11 +4,21 @@ import io.ktor.client.HttpClient
 import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.websocket.Frame
 import io.ktor.websocket.readText
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
@@ -18,6 +28,26 @@ import kotlinx.serialization.json.longOrNull
 
 class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
     private val json = Json { ignoreUnknownKeys = true }
+    private val clientScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    private val _serviceCallChannel = Channel<String>(Channel.UNLIMITED)
+    private var _serviceCallNextId = 10_000L
+
+    fun callService(
+        domain: String,
+        service: String,
+        target: JsonObject? = null,
+        data: JsonObject? = null,
+    ) {
+        val id = _serviceCallNextId++
+        val msg = buildString {
+            append("""{"id":$id,"type":"call_service","domain":"$domain","service":"$service"""")
+            if (target != null) append(""","target":$target""")
+            if (data != null) append(""","service_data":$data""")
+            append("}")
+        }
+        _serviceCallChannel.trySend(msg)
+    }
 
     private val _frameCount = MutableStateFlow(0L)
     val frameCount: StateFlow<Long> = _frameCount.asStateFlow()
@@ -34,14 +64,30 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
     private val _dashboardErrors = MutableStateFlow<Map<String, String>>(emptyMap())
     val dashboardErrors: StateFlow<Map<String, String>> = _dashboardErrors.asStateFlow()
 
-    private val _entityStates = MutableStateFlow<Map<String, HaEntityState>>(emptyMap())
-    val entityStates: StateFlow<Map<String, HaEntityState>> = _entityStates.asStateFlow()
+    private val _rawEntityStates = MutableStateFlow<Map<String, HaEntityState>>(emptyMap())
+    private val _optimisticStates = MutableStateFlow<Map<String, HaEntityState>>(emptyMap())
+
+    val entityStates: StateFlow<Map<String, HaEntityState>> = combine(
+        _rawEntityStates, _optimisticStates
+    ) { raw, optimistic -> raw + optimistic }
+        .stateIn(clientScope, SharingStarted.Eagerly, emptyMap())
+
+    fun setOptimisticState(entityId: String, state: HaEntityState) {
+        _optimisticStates.value = _optimisticStates.value + (entityId to state)
+        clientScope.launch {
+            delay(5_000)
+            _optimisticStates.value = _optimisticStates.value - entityId
+        }
+    }
 
     suspend fun connect(config: HomeAssistantConfig) {
         var nextId = 1L
         val pendingRequests = mutableMapOf<Long, PendingRequest>()
 
         httpClient.webSocket(config.baseUrl.toWebSocketUrl()) {
+            val sendJob = launch {
+                for (msg in _serviceCallChannel) send(Frame.Text(msg))
+            }
             for (frame in incoming) {
                 if (frame !is Frame.Text) continue
                 val text = frame.readText()
@@ -124,7 +170,7 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
                                 val list = runCatching {
                                     json.decodeFromJsonElement<List<HaEntityState>>(result)
                                 }.getOrElse { emptyList() }
-                                _entityStates.value = list.associateBy { it.entityId }
+                                _rawEntityStates.value = list.associateBy { it.entityId }
                             }
 
                             PendingRequest.SubscribeEvents -> Unit
@@ -138,19 +184,21 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
                         val data = event["data"]?.jsonObject ?: continue
                         val entityId = data["entity_id"]?.jsonPrimitive?.contentOrNull ?: continue
                         val newState = data["new_state"]
+                        _optimisticStates.value = _optimisticStates.value - entityId
                         if (newState == null || newState is JsonNull) {
-                            _entityStates.value = _entityStates.value - entityId
+                            _rawEntityStates.value = _rawEntityStates.value - entityId
                         } else {
                             val parsed = runCatching {
                                 json.decodeFromJsonElement<HaEntityState>(newState)
                             }.getOrNull()
                             if (parsed != null) {
-                                _entityStates.value = _entityStates.value + (entityId to parsed)
+                                _rawEntityStates.value = _rawEntityStates.value + (entityId to parsed)
                             }
                         }
                     }
                 }
             }
+            sendJob.cancel()
         }
     }
 
