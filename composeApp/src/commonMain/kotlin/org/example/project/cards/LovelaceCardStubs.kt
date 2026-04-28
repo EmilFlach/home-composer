@@ -71,11 +71,6 @@ internal fun GridCardStub(config: LovelaceCardConfig, modifier: Modifier = Modif
 }
 
 @Composable
-internal fun HeadingCardStub(config: LovelaceCardConfig, modifier: Modifier = Modifier) {
-    StubScaffold(config, modifier)
-}
-
-@Composable
 internal fun HistoryGraphCardStub(config: LovelaceCardConfig, modifier: Modifier = Modifier) {
     StubScaffold(config, modifier) {
         if (config.entities.isNotEmpty()) {

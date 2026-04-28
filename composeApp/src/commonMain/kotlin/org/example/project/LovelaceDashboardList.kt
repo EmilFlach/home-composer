@@ -29,7 +29,6 @@ import org.example.project.auth.DEFAULT_DASHBOARD_KEY
 import org.example.project.auth.HaEntityState
 import org.example.project.auth.LovelaceConfig
 import org.example.project.auth.LovelaceDashboard
-import org.example.project.auth.LovelaceSection
 import org.example.project.auth.LovelaceView
 import org.example.project.cards.LovelaceCard
 
@@ -203,33 +202,10 @@ private fun LazyView(
         }
 
         sections.forEachIndexed { sectionIndex, section ->
-            item(key = "section-$sectionIndex") {
-                SectionHeader(section = section, index = sectionIndex)
-            }
             items(section.cards.size, key = { "section-$sectionIndex-card-$it" }) { cardIndex ->
                 LovelaceCard(card = section.cards[cardIndex], entityStates = entityStates)
             }
         }
-    }
-}
-
-@Composable
-private fun SectionHeader(section: LovelaceSection, index: Int) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        Text(
-            text = section.title ?: "Section ${index + 1}",
-            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-            color = MaterialTheme.colorScheme.primary,
-        )
-        Text(
-            text = "${section.cards.size} card${if (section.cards.size == 1) "" else "s"}" +
-                (section.type?.let { " · $it" } ?: ""),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 
