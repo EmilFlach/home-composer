@@ -15,16 +15,22 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
 import androidx.savedstate.serialization.SavedStateConfiguration
+import coil3.ImageLoader
+import coil3.compose.setSingletonImageLoaderFactory
+import coil3.network.ktor3.KtorNetworkFetcherFactory
+import coil3.request.crossfade
 import kotlinx.coroutines.flow.collect
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import org.example.project.auth.HomeAssistantClient
 import org.example.project.auth.HomeAssistantWebSocketClient
+import org.example.project.auth.LocalHomeAssistantConfig
 import org.example.project.auth.LoginEffect
 import org.example.project.auth.LoginViewModel
 import org.example.project.auth.TokenStorage
 import org.example.project.auth.createHttpClient
 import org.example.project.auth.createSettings
+import androidx.compose.runtime.CompositionLocalProvider
 
 private val navConfig = SavedStateConfiguration {
     serializersModule = SerializersModule {
@@ -45,6 +51,14 @@ fun App() {
     val httpClient = remember { createHttpClient() }
     val haClient = remember { HomeAssistantClient(httpClient) }
     val haWsClient = remember { HomeAssistantWebSocketClient(httpClient) }
+
+    @OptIn(coil3.annotation.ExperimentalCoilApi::class)
+    setSingletonImageLoaderFactory { context ->
+        ImageLoader.Builder(context)
+            .components { add(KtorNetworkFetcherFactory(httpClient = httpClient)) }
+            .crossfade(true)
+            .build()
+    }
 
     val startRoute = remember { if (tokenStorage.load() != null) Dashboard else Login }
 
@@ -83,13 +97,15 @@ fun App() {
                             backStack.add(Login)
                         }
                     } else {
-                        DashboardScreen(
-                            config = config,
-                            client = haClient,
-                            wsClient = haWsClient,
-                            darkTheme = darkTheme,
-                            onToggleDarkMode = { darkTheme = !darkTheme },
-                        )
+                        CompositionLocalProvider(LocalHomeAssistantConfig provides config) {
+                            DashboardScreen(
+                                config = config,
+                                client = haClient,
+                                wsClient = haWsClient,
+                                darkTheme = darkTheme,
+                                onToggleDarkMode = { darkTheme = !darkTheme },
+                            )
+                        }
                     }
                 }
             },

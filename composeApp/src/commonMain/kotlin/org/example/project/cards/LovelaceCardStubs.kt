@@ -139,23 +139,8 @@ internal fun MediaControlCardStub(config: LovelaceCardConfig, modifier: Modifier
 }
 
 @Composable
-internal fun PictureCardStub(config: LovelaceCardConfig, modifier: Modifier = Modifier) {
-    StubScaffold(config, modifier) {
-        val image = (config.raw?.get("image"))?.toString()?.trim('"')
-        if (image != null) StubLine("image", image)
-    }
-}
-
-@Composable
 internal fun PictureElementsCardStub(config: LovelaceCardConfig, modifier: Modifier = Modifier) {
     StubScaffold(config, modifier)
-}
-
-@Composable
-internal fun PictureEntityCardStub(config: LovelaceCardConfig, modifier: Modifier = Modifier) {
-    StubScaffold(config, modifier) {
-        config.entity?.let { StubLine("entity", it) }
-    }
 }
 
 @Composable
