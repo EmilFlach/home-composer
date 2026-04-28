@@ -13,8 +13,26 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.filled.Blinds
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.DoorFront
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.MotionPhotosOn
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Power
+import androidx.compose.material.icons.filled.Sensors
+import androidx.compose.material.icons.filled.Thermostat
+import androidx.compose.material.icons.filled.ToggleOn
+import androidx.compose.material.icons.filled.WaterDrop
+import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.Whatshot
+import androidx.compose.material.icons.filled.Window
 import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -30,6 +48,7 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import org.example.project.auth.HaEntityState
 import org.example.project.auth.attributeString
+import org.example.project.auth.domain
 import org.example.project.auth.friendlyName
 import org.example.project.auth.icon
 import org.example.project.auth.unitOfMeasurement
@@ -105,23 +124,25 @@ private fun HeadingBadge(
 ) {
     if (!evaluateVisibility(badge.visibility, entityStates)) return
     if (badge.type == "button") {
-        if (badge.icon == null && badge.text == null) return
+        val label = badge.name ?: badge.text
+        if (badge.icon == null && label == null) return
         BadgeChip(
             tapAction = badge.tapAction,
             holdAction = badge.holdAction,
             doubleTapAction = badge.doubleTapAction,
             contextEntity = badge.entity,
         ) {
-            if (badge.icon != null) {
+            val btnIcon = mdiToImageVector(badge.icon)
+            if (btnIcon != null) {
                 Icon(
-                    imageVector = Icons.Filled.Bookmark,
+                    imageVector = btnIcon,
                     contentDescription = null,
                     modifier = Modifier.size(14.dp),
                 )
             }
-            if (badge.text != null) {
+            if (label != null) {
                 Text(
-                    text = badge.text,
+                    text = label,
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
                 )
             }
@@ -131,27 +152,34 @@ private fun HeadingBadge(
 
     // Entity badge
     val state = badge.entity?.let(entityStates::get)
-    val displayName = badge.name ?: state?.friendlyName ?: badge.entity ?: return
+    val badgeIcon: ImageVector? = if (badge.showIcon) {
+        mdiToImageVector(badge.icon ?: state?.icon) ?: resolveEntityBadgeIcon(state, badge.entity)
+    } else null
 
-    // Badge icon: explicit override → entity attribute icon
-    val resolvedIcon = badge.icon ?: state?.icon
-
-    // State content: explicit list → "state" if show_state → nothing
     val contentKeys = when {
         badge.stateContent.isNotEmpty() -> badge.stateContent
         badge.showState -> listOf("state")
         else -> emptyList()
     }
-    val contentParts = contentKeys.mapNotNull { key ->
-        when (key) {
-            "state" -> state?.let {
-                val unit = it.unitOfMeasurement
-                if (unit != null) "${it.state} $unit" else it.state
+
+    // Resolve what to display before entering the chip lambda (return not allowed inside non-inline lambda)
+    val displayName: String?
+    val contentText: String?
+    if (contentKeys.isEmpty()) {
+        displayName = badge.name ?: state?.friendlyName ?: badge.entity ?: return
+        contentText = null
+    } else {
+        displayName = null
+        val parts = contentKeys.mapNotNull { key ->
+            when (key) {
+                "state" -> state?.formatBadgeState()
+                "name" -> badge.name ?: state?.friendlyName
+                "last_changed", "last_updated" -> null
+                else -> state?.attributeString(key)
             }
-            "name" -> null // already rendered as the label
-            "last_changed", "last_updated" -> null // requires relative time formatting
-            else -> state?.attributeString(key)
         }
+        if (parts.isEmpty()) return
+        contentText = parts.joinToString(" · ")
     }
 
     BadgeChip(
@@ -160,22 +188,22 @@ private fun HeadingBadge(
         doubleTapAction = badge.doubleTapAction,
         contextEntity = badge.entity,
     ) {
-        if (badge.showIcon && resolvedIcon != null) {
+        if (badgeIcon != null) {
             Icon(
-                imageVector = Icons.Filled.Bookmark,
+                imageVector = badgeIcon,
                 contentDescription = null,
                 modifier = Modifier.size(14.dp),
             )
             Spacer(Modifier.width(4.dp))
         }
-        Text(
-            text = displayName,
-            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
-        )
-        if (contentParts.isNotEmpty()) {
-            Spacer(Modifier.width(6.dp))
+        if (displayName != null) {
             Text(
-                text = contentParts.joinToString(" · "),
+                text = displayName,
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
+            )
+        } else if (contentText != null) {
+            Text(
+                text = contentText,
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -230,7 +258,7 @@ private data class HeadingBadgeConfig(
     val icon: String? = null,
     val color: String? = null,
     val showIcon: Boolean = true,
-    val showState: Boolean = false,
+    val showState: Boolean = true,
     val stateContent: List<String> = emptyList(),
     val text: String? = null,
     val visibility: List<HaCondition> = emptyList(),
@@ -251,7 +279,7 @@ private fun parseBadges(raw: JsonObject?): List<HeadingBadgeConfig> {
                 val icon = (element["icon"] as? JsonPrimitive)?.contentOrNull
                 val color = (element["color"] as? JsonPrimitive)?.contentOrNull
                 val showIcon = (element["show_icon"] as? JsonPrimitive)?.booleanOrNull ?: true
-                val showState = (element["show_state"] as? JsonPrimitive)?.booleanOrNull ?: false
+                val showState = (element["show_state"] as? JsonPrimitive)?.booleanOrNull ?: true
                 val stateContent = when (val sc = element["state_content"]) {
                     is JsonPrimitive -> sc.contentOrNull?.let { listOf(it) } ?: emptyList()
                     is JsonArray -> sc.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
@@ -263,7 +291,7 @@ private fun parseBadges(raw: JsonObject?): List<HeadingBadgeConfig> {
                 val holdAction = parseAction(element, "hold_action")
                 val doubleTapAction = parseAction(element, "double_tap_action")
 
-                if (type == "button" && icon == null && text == null) return@mapNotNull null
+                if (type == "button" && icon == null && text == null && name == null) return@mapNotNull null
                 if (type != "button" && entity == null && name == null) return@mapNotNull null
 
                 HeadingBadgeConfig(
@@ -284,5 +312,93 @@ private fun parseBadges(raw: JsonObject?): List<HeadingBadgeConfig> {
             }
             else -> null
         }
+    }
+}
+
+private fun HaEntityState.formatBadgeState(): String {
+    val unit = unitOfMeasurement
+    if (unit != null) return "$state $unit"
+    if (domain != "binary_sensor") return state
+    val isOn = state.lowercase() == "on"
+    return when (attributeString("device_class")) {
+        "occupancy", "motion", "presence", "vibration" -> if (isOn) "Detected" else "Clear"
+        "door", "window", "garage_door", "opening" -> if (isOn) "Open" else "Closed"
+        "lock" -> if (isOn) "Unlocked" else "Locked"
+        "smoke", "co", "co2", "gas", "safety" -> if (isOn) "Detected" else "Clear"
+        "moisture" -> if (isOn) "Wet" else "Dry"
+        "battery" -> if (isOn) "Low" else "Normal"
+        "connectivity" -> if (isOn) "Connected" else "Disconnected"
+        "plug", "power" -> if (isOn) "Plugged in" else "Unplugged"
+        "light" -> if (isOn) "Detected" else "Clear"
+        "running" -> if (isOn) "Running" else "Not running"
+        "problem" -> if (isOn) "Problem" else "OK"
+        "tamper" -> if (isOn) "Tampered" else "Clear"
+        "update" -> if (isOn) "Update available" else "Up to date"
+        else -> if (isOn) "On" else "Off"
+    }
+}
+
+private fun mdiToImageVector(mdi: String?): ImageVector? = when (mdi) {
+    // Motion / occupancy
+    "mdi:motion-sensor", "mdi:motion-sensor-off",
+    "mdi:run", "mdi:walk" -> Icons.Filled.MotionPhotosOn
+    // Door / window
+    "mdi:door-open", "mdi:door-closed" -> Icons.Filled.DoorFront
+    "mdi:window-open", "mdi:window-closed" -> Icons.Filled.Window
+    "mdi:curtains", "mdi:curtains-closed" -> Icons.Filled.Blinds
+    "mdi:blinds", "mdi:blinds-horizontal",
+    "mdi:blinds-open", "mdi:blinds-horizontal-closed",
+    "mdi:garage", "mdi:garage-open" -> Icons.Filled.Blinds
+    // Lights
+    "mdi:lightbulb", "mdi:lightbulb-on", "mdi:lightbulb-off",
+    "mdi:lightbulb-auto", "mdi:lightbulb-auto-outline",
+    "mdi:ceiling-light", "mdi:ceiling-light-outline",
+    "mdi:floor-lamp", "mdi:led-strip-variant" -> Icons.Filled.Lightbulb
+    // Lock
+    "mdi:lock", "mdi:lock-outline" -> Icons.Filled.Lock
+    "mdi:lock-open", "mdi:lock-open-outline" -> Icons.Filled.LockOpen
+    // Climate
+    "mdi:thermostat", "mdi:thermometer" -> Icons.Filled.Thermostat
+    "mdi:sun-thermometer", "mdi:sun-thermometer-outline" -> Icons.Filled.WbSunny
+    // Media
+    "mdi:play-circle", "mdi:music", "mdi:music-note",
+    "mdi:filmstrip", "mdi:cast", "mdi:cast-off",
+    "mdi:sony-playstation", "mdi:television", "mdi:speaker" -> Icons.Filled.PlayArrow
+    // People
+    "mdi:account", "mdi:account-circle" -> Icons.Filled.Person
+    // Sensors / environment
+    "mdi:water", "mdi:water-alert" -> Icons.Filled.WaterDrop
+    "mdi:smoke-detector", "mdi:smoke", "mdi:fire", "mdi:fire-alert" -> Icons.Filled.Whatshot
+    "mdi:toggle-switch", "mdi:toggle-switch-off" -> Icons.Filled.ToggleOn
+    "mdi:power", "mdi:power-plug", "mdi:power-plug-off" -> Icons.Filled.Power
+    "mdi:home-automation" -> Icons.Filled.Power
+    "mdi:weather-sunny" -> Icons.Filled.WbSunny
+    else -> null
+}
+
+private fun resolveEntityBadgeIcon(state: HaEntityState?, entityId: String?): ImageVector? {
+    val domain = state?.domain ?: entityId?.substringBefore('.', missingDelimiterValue = "") ?: return null
+    val isOn = state?.state?.lowercase() == "on"
+    return when (domain) {
+        "binary_sensor" -> when (state?.attributeString("device_class")) {
+            "occupancy", "motion", "presence", "vibration" -> Icons.Filled.MotionPhotosOn
+            "door", "opening" -> Icons.Filled.DoorFront
+            "window" -> Icons.Filled.Window
+            "moisture" -> Icons.Filled.WaterDrop
+            "smoke", "co", "co2", "gas" -> Icons.Filled.Whatshot
+            "lock" -> if (isOn) Icons.Filled.LockOpen else Icons.Filled.Lock
+            "connectivity" -> Icons.Filled.Sensors
+            else -> Icons.Filled.Sensors
+        }
+        "sensor" -> Icons.Filled.Sensors
+        "media_player" -> Icons.Filled.PlayArrow
+        "cover" -> Icons.Filled.Blinds
+        "light" -> Icons.Filled.Lightbulb
+        "switch", "input_boolean" -> Icons.Filled.ToggleOn
+        "lock" -> if (isOn) Icons.Filled.LockOpen else Icons.Filled.Lock
+        "group", "automation", "script" -> Icons.Filled.Power
+        "person", "device_tracker" -> Icons.Filled.Person
+        "weather", "sun" -> Icons.Filled.WbSunny
+        else -> Icons.AutoMirrored.Filled.HelpOutline
     }
 }
