@@ -104,6 +104,11 @@ fun App() {
                                 wsClient = haWsClient,
                                 darkTheme = darkTheme,
                                 onToggleDarkMode = { darkTheme = !darkTheme },
+                                onLogout = {
+                                    tokenStorage.clear()
+                                    backStack.clear()
+                                    backStack.add(Login)
+                                },
                             )
                         }
                     }

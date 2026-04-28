@@ -53,6 +53,7 @@ fun DashboardScreen(
     wsClient: HomeAssistantWebSocketClient,
     darkTheme: Boolean = false,
     onToggleDarkMode: () -> Unit = {},
+    onLogout: () -> Unit = {},
 ) {
     var connectionStatus by remember { mutableStateOf<ConnectionStatus>(ConnectionStatus.Checking) }
     LaunchedEffect(config) {
@@ -83,6 +84,7 @@ fun DashboardScreen(
             entityStates = entityStates,
             darkTheme = darkTheme,
             onToggleDarkMode = onToggleDarkMode,
+            onLogout = onLogout,
             modifier = Modifier.weight(1f),
         )
         ConnectionStatusBar(

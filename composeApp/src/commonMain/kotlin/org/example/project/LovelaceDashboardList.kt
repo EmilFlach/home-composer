@@ -41,6 +41,7 @@ fun LovelaceDashboardList(
     entityStates: Map<String, HaEntityState>,
     darkTheme: Boolean,
     onToggleDarkMode: () -> Unit,
+    onLogout: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val entries = remember(dashboards, configs, errors) {
@@ -74,6 +75,7 @@ fun LovelaceDashboardList(
             onSelectDashboard = { selectedKey = it },
             darkTheme = darkTheme,
             onToggleDarkMode = onToggleDarkMode,
+            onLogout = onLogout,
         )
 
         if (views.isNotEmpty()) {

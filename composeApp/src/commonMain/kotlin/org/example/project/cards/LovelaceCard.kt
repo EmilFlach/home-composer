@@ -65,7 +65,7 @@ fun LovelaceCard(
         "tile" -> TileCardStub(config, modifier)
         "todo-list" -> TodoListCardStub(config, modifier)
         "vertical-stack" -> VerticalStackCardStub(config, modifier)
-        "weather-forecast" -> WeatherForecastCardStub(config, modifier)
+        "weather-forecast" -> WeatherForecastCard(config, entityStates, modifier)
 
         else -> UnknownCardStub(config, modifier)
     }

@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -47,6 +48,7 @@ fun DashboardHeader(
     onSelectDashboard: (String) -> Unit,
     darkTheme: Boolean,
     onToggleDarkMode: () -> Unit,
+    onLogout: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val selectedTitle = items.firstOrNull { it.key == selectedKey }?.title
@@ -89,6 +91,17 @@ fun DashboardHeader(
                 Icon(
                     imageVector = if (darkTheme) Icons.Filled.LightMode else Icons.Filled.DarkMode,
                     contentDescription = if (darkTheme) "Light mode" else "Dark mode",
+                    modifier = Modifier.size(20.dp),
+                    tint = Color.White.copy(alpha = 0.75f),
+                )
+            }
+            IconButton(
+                onClick = onLogout,
+                modifier = Modifier.size(36.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Logout,
+                    contentDescription = "Log out",
                     modifier = Modifier.size(20.dp),
                     tint = Color.White.copy(alpha = 0.75f),
                 )
