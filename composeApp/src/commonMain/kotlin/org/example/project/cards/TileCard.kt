@@ -1,15 +1,21 @@
 package org.example.project.cards
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -42,9 +48,11 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -53,11 +61,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -70,6 +82,7 @@ import kotlinx.serialization.json.put
 import org.example.project.auth.HaEntityState
 import org.example.project.auth.domain
 import org.example.project.auth.friendlyName
+import org.example.project.auth.isActive
 import org.example.project.auth.unitOfMeasurement
 import kotlin.math.roundToInt
 
@@ -162,6 +175,7 @@ private fun LightBrightnessFeature(
 ) {
     val rawBrightness = (state?.attributes?.get("brightness") as? JsonPrimitive)?.floatOrNull
     val normalizedBrightness = rawBrightness?.let { it / 255f }?.coerceIn(0f, 1f) ?: 0f
+    val isOn = state?.isActive() ?: false
 
     var sliderValue by remember { mutableStateOf(normalizedBrightness) }
     var isDragging by remember { mutableStateOf(false) }
@@ -170,33 +184,92 @@ private fun LightBrightnessFeature(
         if (!isDragging) sliderValue = normalizedBrightness
     }
 
-    Slider(
-        value = sliderValue,
-        onValueChange = { value ->
-            isDragging = true
-            sliderValue = value
-        },
-        onValueChangeFinished = {
-            isDragging = false
-            val pct = (sliderValue * 100f).roundToInt().coerceIn(0, 100)
-            handler(
-                HaAction.PerformAction(
-                    action = "light.turn_on",
-                    target = buildJsonObject { put("entity_id", entityId) },
-                    data = buildJsonObject { put("brightness_pct", pct) },
-                ),
-                null,
-            )
-        },
-        colors = SliderDefaults.colors(
-            thumbColor = accent,
-            activeTrackColor = accent,
-            inactiveTrackColor = accent.copy(alpha = 0.25f),
-        ),
+    fun sendBrightness(value: Float) {
+        val pct = (value * 100f).roundToInt().coerceIn(0, 100)
+        handler(
+            HaAction.PerformAction(
+                action = "light.turn_on",
+                target = buildJsonObject { put("entity_id", entityId) },
+                data = buildJsonObject { put("brightness_pct", pct) },
+            ),
+            null,
+        )
+    }
+
+    val animatedSliderValue by animateFloatAsState(
+        targetValue = sliderValue,
+        animationSpec = if (isDragging) snap() else spring(stiffness = Spring.StiffnessMediumLow),
+    )
+
+    var trackWidthPx by remember { mutableStateOf(0f) }
+    val handleWidth = 8.dp
+    val fillGradient = Brush.horizontalGradient(
+        colors = listOf(
+            Color(0xFFFFE08C).copy(alpha = 0.96f),
+            Color(0xFFFFCC66).copy(alpha = 0.97f),
+            Color(0xFFFFB347).copy(alpha = 0.99f),
+            Color(0xFFFF9F2F).copy(alpha = 1f),
+        )
+    )
+
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 4.dp),
-    )
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .height(34.dp)
+            .clip(RoundedCornerShape(15.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .onSizeChanged { trackWidthPx = it.width.toFloat() }
+            .pointerInput(isOn) {
+                if (!isOn) return@pointerInput
+                detectTapGestures { offset ->
+                    val value = (offset.x / trackWidthPx).coerceIn(0f, 1f)
+                    sliderValue = value
+                    sendBrightness(value)
+                }
+            }
+            .pointerInput(isOn) {
+                if (!isOn) return@pointerInput
+                detectDragGestures(
+                    onDragStart = { offset ->
+                        isDragging = true
+                        sliderValue = (offset.x / trackWidthPx).coerceIn(0f, 1f)
+                    },
+                    onDrag = { change, _ ->
+                        change.consume()
+                        sliderValue = (change.position.x / trackWidthPx).coerceIn(0f, 1f)
+                    },
+                    onDragEnd = {
+                        isDragging = false
+                        sendBrightness(sliderValue)
+                    },
+                    onDragCancel = { isDragging = false },
+                )
+            }
+    ) {
+        if (animatedSliderValue > 0f && isOn) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(maxWidth * animatedSliderValue)
+                    .background(fillGradient)
+            )
+        }
+        if (isOn && animatedSliderValue > 0f) {
+            val handleOffset = (maxWidth * animatedSliderValue - handleWidth / 2)
+                .coerceAtLeast(0.dp)
+                .coerceAtMost(maxWidth - handleWidth)
+            Box(
+                modifier = Modifier
+                    .width(handleWidth)
+                    .fillMaxHeight()
+                    .offset(x = handleOffset)
+                    .align(Alignment.CenterStart)
+                    .clip(RoundedCornerShape(99.dp))
+                    .background(Color.White.copy(alpha = 0.7f))
+            )
+        }
+    }
 }
 
 @Composable
@@ -393,29 +466,6 @@ private fun TileIconBadge(icon: ImageVector, accent: Color) {
         )
     }
 }
-
-private fun HaEntityState.isActive(): Boolean {
-    val s = state.lowercase()
-    if (s in INACTIVE_STATES) return false
-    return when (domain) {
-        "light", "switch", "fan", "input_boolean", "binary_sensor", "automation",
-        "remote", "siren", "humidifier", "vacuum" -> s == "on"
-        "cover" -> s == "open" || s == "opening"
-        "lock" -> s == "unlocked"
-        "climate", "water_heater" -> s != "off"
-        "media_player" -> s == "playing" || s == "paused" || s == "on"
-        "person", "device_tracker" -> s == "home"
-        "alarm_control_panel" -> s.startsWith("armed") || s == "triggered"
-        "sun" -> s == "above_horizon"
-        "weather" -> false
-        else -> s != "off"
-    }
-}
-
-private val INACTIVE_STATES = setOf(
-    "off", "closed", "locked", "not_home", "away", "disarmed",
-    "idle", "standby", "unavailable", "unknown", "none", "",
-)
 
 private val TOGGLEABLE_DOMAINS = setOf(
     "light", "switch", "fan", "input_boolean",

@@ -30,3 +30,26 @@ val HaEntityState.icon: String?
 
 fun HaEntityState.attributeString(name: String): String? =
     attributes[name]?.let { it as? JsonPrimitive }?.contentOrNull
+
+fun HaEntityState.isActive(): Boolean {
+    val s = state.lowercase()
+    if (s in INACTIVE_STATES) return false
+    return when (domain) {
+        "light", "switch", "fan", "input_boolean", "binary_sensor", "automation",
+        "remote", "siren", "humidifier", "vacuum" -> s == "on"
+        "cover" -> s == "open" || s == "opening"
+        "lock" -> s == "unlocked"
+        "climate", "water_heater" -> s != "off"
+        "media_player" -> s == "playing" || s == "paused" || s == "on"
+        "person", "device_tracker" -> s == "home"
+        "alarm_control_panel" -> s.startsWith("armed") || s == "triggered"
+        "sun" -> s == "above_horizon"
+        "weather" -> false
+        else -> s != "off"
+    }
+}
+
+private val INACTIVE_STATES = setOf(
+    "off", "closed", "locked", "not_home", "away", "disarmed",
+    "idle", "standby", "unavailable", "unknown", "none", "",
+)

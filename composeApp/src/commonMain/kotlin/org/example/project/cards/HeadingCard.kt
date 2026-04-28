@@ -1,6 +1,7 @@
 package org.example.project.cards
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -32,13 +33,15 @@ import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material.icons.filled.Window
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.serialization.json.JsonArray
@@ -51,6 +54,7 @@ import org.example.project.auth.attributeString
 import org.example.project.auth.domain
 import org.example.project.auth.friendlyName
 import org.example.project.auth.icon
+import org.example.project.auth.isActive
 import org.example.project.auth.unitOfMeasurement
 
 @Composable
@@ -73,7 +77,7 @@ internal fun HeadingCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(top = if (isSubtitle) 4.dp else 8.dp, bottom = 4.dp),
+            .padding(top = if (isSubtitle) 4.dp else 40.dp, bottom = 4.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         if (text != null) {
@@ -137,13 +141,13 @@ private fun HeadingBadge(
                 Icon(
                     imageVector = btnIcon,
                     contentDescription = null,
-                    modifier = Modifier.size(14.dp),
+                    modifier = Modifier.size(16.dp),
                 )
             }
             if (label != null) {
                 Text(
                     text = label,
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
+                    style = MaterialTheme.typography.bodySmall,
                 )
             }
         }
@@ -187,25 +191,24 @@ private fun HeadingBadge(
         holdAction = badge.holdAction,
         doubleTapAction = badge.doubleTapAction,
         contextEntity = badge.entity,
+        isActive = state?.isActive() ?: false,
     ) {
         if (badgeIcon != null) {
             Icon(
                 imageVector = badgeIcon,
                 contentDescription = null,
-                modifier = Modifier.size(14.dp),
+                modifier = Modifier.size(16.dp),
             )
-            Spacer(Modifier.width(4.dp))
         }
         if (displayName != null) {
             Text(
                 text = displayName,
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
+                style = MaterialTheme.typography.bodySmall,
             )
         } else if (contentText != null) {
             Text(
                 text = contentText,
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.bodySmall,
             )
         }
     }
@@ -218,6 +221,7 @@ private fun BadgeChip(
     holdAction: HaAction = HaAction.None,
     doubleTapAction: HaAction = HaAction.None,
     contextEntity: String? = null,
+    isActive: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val onAction = LocalHaActionHandler.current
@@ -225,27 +229,37 @@ private fun BadgeChip(
         holdAction !is HaAction.None ||
         doubleTapAction !is HaAction.None
 
-    Surface(
-        modifier = if (hasAnyAction) {
-            Modifier.combinedClickable(
-                onClick = { onAction(tapAction, contextEntity) },
-                onLongClick = if (holdAction !is HaAction.None) {
-                    { onAction(holdAction, contextEntity) }
-                } else null,
-                onDoubleClick = if (doubleTapAction !is HaAction.None) {
-                    { onAction(doubleTapAction, contextEntity) }
-                } else null,
+    val chipBackground = if (isActive) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.97f)
+    }
+    val chipContentColor = if (isActive) {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(chipBackground)
+            .then(
+                if (hasAnyAction) Modifier.combinedClickable(
+                    onClick = { onAction(tapAction, contextEntity) },
+                    onLongClick = if (holdAction !is HaAction.None) {
+                        { onAction(holdAction, contextEntity) }
+                    } else null,
+                    onDoubleClick = if (doubleTapAction !is HaAction.None) {
+                        { onAction(doubleTapAction, contextEntity) }
+                    } else null,
+                ) else Modifier
             )
-        } else Modifier,
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
+        CompositionLocalProvider(LocalContentColor provides chipContentColor) {
             content()
         }
     }
@@ -390,12 +404,17 @@ private fun resolveEntityBadgeIcon(state: HaEntityState?, entityId: String?): Im
             "connectivity" -> Icons.Filled.Sensors
             else -> Icons.Filled.Sensors
         }
-        "sensor" -> Icons.Filled.Sensors
+        "sensor" -> when (state?.attributeString("device_class")) {
+            "temperature" -> Icons.Filled.Thermostat
+            "humidity" -> Icons.Filled.WaterDrop
+            else -> Icons.Filled.Sensors
+        }
         "media_player" -> Icons.Filled.PlayArrow
         "cover" -> Icons.Filled.Blinds
         "light" -> Icons.Filled.Lightbulb
         "switch", "input_boolean" -> Icons.Filled.ToggleOn
         "lock" -> if (isOn) Icons.Filled.LockOpen else Icons.Filled.Lock
+        "climate", "water_heater" -> Icons.Filled.Thermostat
         "group", "automation", "script" -> Icons.Filled.Power
         "person", "device_tracker" -> Icons.Filled.Person
         "weather", "sun" -> Icons.Filled.WbSunny
