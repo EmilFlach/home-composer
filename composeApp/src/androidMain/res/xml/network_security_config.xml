@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!--
+        Home Assistant instances on the local network often use plain HTTP.
+        Android 9+ blocks cleartext by default, so we explicitly permit it.
+        HTTPS traffic to all destinations is always allowed and uses system CAs.
+    -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
