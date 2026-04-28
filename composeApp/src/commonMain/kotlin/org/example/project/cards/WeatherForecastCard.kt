@@ -104,7 +104,7 @@ private fun WeatherCardContent(
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                 )
                 Text(
-                    text = condition.replace("-", " ").replaceFirstChar { it.uppercase() },
+                    text = conditionLabel(condition),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -118,6 +118,15 @@ private fun WeatherCardContent(
             )
         }
     }
+}
+
+private fun conditionLabel(condition: String): String = when (condition) {
+    "clear-night" -> "Clear night"
+    "partlycloudy" -> "Partly cloudy"
+    "snowy-rainy" -> "Snowy rainy"
+    "lightning-rainy" -> "Lightning rainy"
+    "windy-variant" -> "Windy"
+    else -> condition.replace("-", " ").replaceFirstChar { it.uppercase() }
 }
 
 private fun conditionIcon(condition: String): ImageVector = when (condition) {

@@ -75,13 +75,6 @@ internal fun SensorCard(
                     )
                 }
             }
-            if (entityId != null) {
-                Text(
-                    text = entityId,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
         }
     }
 }
