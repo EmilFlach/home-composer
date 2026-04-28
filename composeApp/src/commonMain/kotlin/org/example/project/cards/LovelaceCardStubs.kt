@@ -190,13 +190,6 @@ internal fun ThermostatCardStub(config: LovelaceCardConfig, modifier: Modifier =
 }
 
 @Composable
-internal fun TileCardStub(config: LovelaceCardConfig, modifier: Modifier = Modifier) {
-    StubScaffold(config, modifier) {
-        config.entity?.let { StubLine("entity", it) }
-    }
-}
-
-@Composable
 internal fun TodoListCardStub(config: LovelaceCardConfig, modifier: Modifier = Modifier) {
     StubScaffold(config, modifier) {
         config.entity?.let { StubLine("entity", it) }

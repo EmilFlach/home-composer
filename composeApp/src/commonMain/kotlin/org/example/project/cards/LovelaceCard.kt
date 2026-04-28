@@ -62,7 +62,7 @@ fun LovelaceCard(
         "statistic" -> StatisticCardStub(config, modifier)
         "statistics-graph" -> StatisticsGraphCardStub(config, modifier)
         "thermostat" -> ThermostatCardStub(config, modifier)
-        "tile" -> TileCardStub(config, modifier)
+        "tile" -> TileCard(config, entityStates, modifier)
         "todo-list" -> TodoListCardStub(config, modifier)
         "vertical-stack" -> VerticalStackCardStub(config, modifier)
         "weather-forecast" -> WeatherForecastCard(config, entityStates, modifier)
