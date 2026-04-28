@@ -78,6 +78,7 @@ kotlin {
             implementation(libs.ktor.client.core)
             implementation(libs.ktor.client.contentNegotiation)
             implementation(libs.ktor.client.logging)
+            implementation(libs.ktor.client.websockets)
             implementation(libs.ktor.serialization.json)
             implementation(libs.multiplatform.settings)
             implementation(libs.multiplatform.settings.coroutines)

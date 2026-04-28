@@ -36,19 +36,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import org.example.project.auth.ConnectionStatus
 import org.example.project.auth.HomeAssistantClient
 import org.example.project.auth.HomeAssistantConfig
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.filled.Blinds
-import androidx.compose.material.icons.outlined.Bathroom
+import org.example.project.auth.HomeAssistantWebSocketClient
+
 private const val CONNECTION_POLL_INTERVAL_MS = 30_000L
 
 @Composable
 fun DashboardScreen(
     config: HomeAssistantConfig,
     client: HomeAssistantClient,
+    wsClient: HomeAssistantWebSocketClient,
     darkTheme: Boolean = false,
     onToggleDarkMode: () -> Unit = {},
 ) {
@@ -64,13 +67,23 @@ fun DashboardScreen(
             delay(CONNECTION_POLL_INTERVAL_MS)
         }
     }
+    LaunchedEffect(wsClient, config) {
+        runCatching { wsClient.connect(config) }
+    }
+    val frameCount by wsClient.frameCount.collectAsStateWithLifecycle()
+    val latestFrame by wsClient.latestFrame.collectAsStateWithLifecycle()
     Column(modifier = Modifier.fillMaxSize()) {
         DashboardContent(
             modifier = Modifier.weight(1f),
             darkTheme = darkTheme,
             onToggleDarkMode = onToggleDarkMode,
         )
-        ConnectionStatusBar(status = connectionStatus, baseUrl = config.baseUrl)
+        ConnectionStatusBar(
+            status = connectionStatus,
+            baseUrl = config.baseUrl,
+            frameCount = frameCount,
+            latestFrame = latestFrame,
+        )
     }
 }
 

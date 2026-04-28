@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import org.example.project.auth.HomeAssistantClient
+import org.example.project.auth.HomeAssistantWebSocketClient
 import org.example.project.auth.LoginEffect
 import org.example.project.auth.LoginViewModel
 import org.example.project.auth.TokenStorage
@@ -43,6 +44,7 @@ fun App() {
     val tokenStorage = remember { TokenStorage(createSettings()) }
     val httpClient = remember { createHttpClient() }
     val haClient = remember { HomeAssistantClient(httpClient) }
+    val haWsClient = remember { HomeAssistantWebSocketClient(httpClient) }
 
     val startRoute = remember { if (tokenStorage.load() != null) Dashboard else Login }
 
@@ -84,6 +86,7 @@ fun App() {
                         DashboardScreen(
                             config = config,
                             client = haClient,
+                            wsClient = haWsClient,
                             darkTheme = darkTheme,
                             onToggleDarkMode = { darkTheme = !darkTheme },
                         )
