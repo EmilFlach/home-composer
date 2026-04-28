@@ -11,7 +11,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Air
-import androidx.compose.material.icons.filled.Bathroom
 import androidx.compose.material.icons.filled.Bathtub
 import androidx.compose.material.icons.filled.Bed
 import androidx.compose.material.icons.filled.Computer
@@ -72,11 +71,17 @@ fun DashboardScreen(
     }
     val frameCount by wsClient.frameCount.collectAsStateWithLifecycle()
     val latestFrame by wsClient.latestFrame.collectAsStateWithLifecycle()
+    val dashboards by wsClient.dashboards.collectAsStateWithLifecycle()
+    val dashboardConfigs by wsClient.dashboardConfigs.collectAsStateWithLifecycle()
+    val dashboardErrors by wsClient.dashboardErrors.collectAsStateWithLifecycle()
     Column(modifier = Modifier.fillMaxSize()) {
-        DashboardContent(
-            modifier = Modifier.weight(1f),
+        LovelaceDashboardList(
+            dashboards = dashboards,
+            configs = dashboardConfigs,
+            errors = dashboardErrors,
             darkTheme = darkTheme,
             onToggleDarkMode = onToggleDarkMode,
+            modifier = Modifier.weight(1f),
         )
         ConnectionStatusBar(
             status = connectionStatus,
@@ -110,15 +115,6 @@ private fun DashboardContent(
         verticalArrangement = Arrangement.spacedBy(40.dp),
         contentPadding = PaddingValues(bottom = 24.dp)
     ) {
-        item {
-            DashboardHeader(
-                locationName = "Home",
-                outdoorTemp = state.gardenCurrentTemp,
-                darkTheme = darkTheme,
-                onToggleDarkMode = onToggleDarkMode
-            )
-        }
-
         items(rooms, key = { it.id }) { room ->
             RoomCard(
                 room = room,
