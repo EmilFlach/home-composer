@@ -1,5 +1,6 @@
 package org.example.project
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +28,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -48,11 +51,33 @@ import org.example.project.cards.WeatherForecastCard
 fun LoginScreen(
     state: LoginUiState,
     onEvent: (LoginEvent) -> Unit,
+    darkTheme: Boolean = false,
 ) {
     var showConnectSheet by remember { mutableStateOf(false) }
     val showcase = remember { buildShowcaseEntityStates() }
 
-    Box(modifier = Modifier.fillMaxSize().safeContentPadding()) {
+    val backgroundModifier = if (darkTheme) {
+        Modifier.background(
+            Brush.verticalGradient(
+                colorStops = arrayOf(
+                    0.0f to Color(0xFF1A0040),
+                    0.4f to Color(0xFF0E0020),
+                    1.0f to Color(0xFF080010),
+                )
+            )
+        )
+    } else {
+        Modifier.background(
+            Brush.verticalGradient(
+                colorStops = arrayOf(
+                    0.0f to Color(0xFFEEE4FF),
+                    1.0f to Color(0xFFF4F0FF),
+                )
+            )
+        )
+    }
+
+    Box(modifier = Modifier.fillMaxSize().then(backgroundModifier).safeContentPadding()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -218,7 +243,7 @@ private fun ShowcaseLabel(text: String) {
     Text(
         text = text.uppercase(),
         style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.secondary,
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
         letterSpacing = 2.sp,
         modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
     )

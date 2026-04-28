@@ -87,6 +87,7 @@ fun App() {
                     LoginScreen(
                         state = state,
                         onEvent = viewModel::onEvent,
+                        darkTheme = darkTheme,
                     )
                 }
                 entry<Dashboard> {
