@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>home-composer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root {
+            --panel-width: 320px;
+            --top-bar-height: 64px;
+            --bg-color: #19191c;
+            --panel-bg: #2b2d30;
+            --text-primary: #dfe1e5;
+            --text-secondary: #9da0a8;
+            --accent-color: #3574f0;
+            --border-color: #3f4146;
+            --card-bg: #393b40;
+            --hover-bg: #4e5157;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            overflow: hidden;
+        }
+
+        #wrapper {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        #side-panel {
+            width: var(--panel-width);
+            background: var(--panel-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        .panel-content {
+            padding: 24px;
+        }
+
+
+        .dev-tag {
+            display: inline-block;
+            background: rgba(53, 116, 240, 0.2);
+            color: var(--accent-color);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        h1 {
+            font-size: 20px;
+            margin: 0 0 16px 0;
+            color: var(--text-primary);
+            line-height: 1.3;
+        }
+
+        .description {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 24px;
+            white-space: pre-wrap;
+        }
+
+        #main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            background-color: var(--bg-color);
+        }
+
+        #top-bar {
+            height: var(--top-bar-height);
+            background: var(--panel-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            padding: 0 24px;
+        }
+
+        .device-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .group-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-right: 4px;
+        }
+
+        select.device-select {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            outline: none;
+        }
+
+        select.device-select:hover {
+            background: var(--hover-bg);
+        }
+
+        .device-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 6px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .device-btn:hover {
+            background: var(--hover-bg);
+        }
+
+        .device-btn.active {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        #hide-ui-btn {
+            margin-left: auto;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        #hide-ui-btn:hover {
+            background: var(--hover-bg);
+            color: var(--text-primary);
+        }
+
+        #show-ui-btn {
+            display: none;
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            z-index: 1001;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        #show-ui-btn:hover {
+            background: var(--hover-bg);
+        }
+
+        #preview-container {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #device-frame {
+            background: #000;
+            border-radius: 36px;
+            padding: 12px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.5);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            display: flex;
+            border: 4px solid #333;
+            transform-origin: center center;
+            flex-shrink: 0;
+        }
+
+        #device-frame.desktop {
+            width: 100% !important;
+            height: 100% !important;
+            border-radius: 0;
+            padding: 0;
+            box-shadow: none;
+            border: none;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #fff;
+            border-radius: 24px;
+            transition: opacity 0.2s ease-in-out;
+        }
+
+        #device-frame.desktop iframe {
+            border-radius: 0;
+        }
+
+        .hidden-iframe {
+            opacity: 0;
+            pointer-events: none;
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            width: calc(100% - 24px);
+            height: calc(100% - 24px);
+        }
+
+        #device-frame.desktop .hidden-iframe {
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .qr-section {
+            width: 100%;
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 32px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        #qr-code {
+            background: white;
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            display: inline-block;
+        }
+
+        #qr-code canvas, #qr-code img {
+            display: block;
+        }
+
+        .qr-section h3 {
+            font-size: 14px;
+            margin: 0 0 8px 0;
+            color: var(--text-primary);
+        }
+
+        .qr-section p {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin: 0;
+            overflow-wrap: break-word;
+            word-break: break-all;
+        }
+
+        #initial-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            flex-direction: column;
+            color: white;
+            font-family: sans-serif;
+            gap: 20px;
+        }
+
+        .big-spinner {
+            width: 48px;
+            height: 48px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-left-color: #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        #rebuilding-indicator {
+            display: none;
+            position: absolute;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 24px;
+            font-family: sans-serif;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            align-items: center;
+            gap: 12px;
+            pointer-events: none;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-left-color: #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        /* Mobile View - Hide everything but the app */
+        @media (max-width: 1024px) {
+            #side-panel, #top-bar {
+                display: none !important;
+            }
+            #preview-container {
+                padding: 0;
+            }
+            #device-frame {
+                width: 100% !important;
+                height: 100% !important;
+                border-radius: 0;
+                padding: 0;
+                box-shadow: none;
+                border: none;
+                transform: scale(1) !important;
+            }
+            #device-frame iframe {
+                border-radius: 0;
+            }
+            #rebuilding-indicator {
+                top: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="initial-loader">
+        <div class="big-spinner"></div>
+        <span>Loading Application...</span>
+    </div>
+
+    <div id="wrapper">
+        <div id="side-panel">
+            <div class="panel-content">
+                <div class="dev-tag">Local Development</div>
+                <h1>home-composer</h1>
+                <div class="description">You are currently developing and previewing your application locally. Changes will be automatically reflected in the frame.</div>
+                <div class="description" style="font-size: 13px; margin-top: -8px; border-left: 2px solid var(--accent-color); padding-left: 12px; white-space: normal;">
+                    <strong>Note:</strong> This is a web preview with limitations (e.g., no device features like Bluetooth). For faster reloads, native performance and all device features, <a href="https://kotlinlang.org/docs/multiplatform/quickstart.html" target="_blank" style="color: var(--accent-color); text-decoration: none;">setup your environment</a> and open this project in Android Studio.
+                </div>
+                <div class="qr-section" id="qr-section">
+                    <h3>Mobile preview</h3>
+                    <div id="qr-code"></div>
+                    <p id="qr-url"></p>
+                </div>
+            </div>
+        </div>
+
+        <div id="main-content">
+            <div id="top-bar">
+                <div class="device-group">
+                    <span class="group-label">Android</span>
+                    <select id="select-android" class="device-select" onchange="setDevice('android', this.value)">
+                        <option value="393x851" selected>Pixel 7</option>
+                        <option value="360x800">Galaxy S22</option>
+                        <option value="411x915">Pixel 7 Pro</option>
+                    </select>
+                </div>
+                <div class="device-group">
+                    <span class="group-label">iOS</span>
+                    <select id="select-iphone" class="device-select" onchange="setDevice('iphone', this.value)">
+                        <option value="" disabled selected hidden>Select device</option>
+                        <option value="375x667">iPhone SE</option>
+                        <option value="390x844">iPhone 14</option>
+                        <option value="430x932">iPhone 14 Pro Max</option>
+                        <option value="820x1180">iPad Air</option>
+                        <option value="1024x1366">iPad Pro 12.9"</option>
+                    </select>
+                </div>
+                <button class="device-btn" id="btn-desktop" onclick="setDevice('desktop')">Desktop Fullscreen</button>
+                <button id="hide-ui-btn" onclick="toggleUI(false)">Hide Interface</button>
+            </div>
+            <button id="show-ui-btn" onclick="toggleUI(true)">Show Interface</button>
+            <div id="preview-container">
+                <div id="device-frame" style="width: 393px; height: 851px;">
+                    <div id="rebuilding-indicator">
+                        <div class="spinner"></div>
+                        <div style="display: flex; flex-direction: column;">
+                            <span id="rebuild-status" style="font-weight: bold; font-size: 14px;">Rebuilding...</span>
+                            <span id="rebuild-timer" style="font-size: 12px; opacity: 0.8;">0.0s</span>
+                        </div>
+                    </div>
+                    <iframe id="current-app" src="app.html"></iframe>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script type="application/javascript">
+        // --- Dev Shell Logic ---
+        const indicator = document.getElementById('rebuilding-indicator');
+        const statusElement = document.getElementById('rebuild-status');
+        const timerElement = document.getElementById('rebuild-timer');
+        const deviceFrame = document.getElementById('device-frame');
+        const initialLoader = document.getElementById('initial-loader');
+
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.hostname}:${window.location.port}/dev-server`;
+
+        let startTime = null;
+        let timerInterval = null;
+        let nextIframe = null;
+
+        function startTimer() {
+            if (timerInterval) return;
+            startTime = Date.now();
+            statusElement.innerText = 'Rebuilding...';
+            indicator.style.display = 'flex';
+            timerInterval = setInterval(() => {
+                const elapsed = (Date.now() - startTime) / 1000;
+                timerElement.innerText = elapsed.toFixed(1) + 's';
+            }, 100);
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            indicator.style.display = 'none';
+        }
+
+        function swapIframes() {
+            if (!nextIframe) return;
+            
+            const currentIframe = document.getElementById('current-app');
+            
+            // Make next visible, current hidden
+            nextIframe.classList.remove('hidden-iframe');
+            currentIframe.classList.add('hidden-iframe');
+            
+            // After transition, cleanup old one
+            setTimeout(() => {
+                currentIframe.remove();
+                nextIframe.id = 'current-app';
+                nextIframe = null;
+                stopTimer();
+            }, 300);
+        }
+
+        window.addEventListener('message', (event) => {
+            if (event.data === 'compose-ready') {
+                if (initialLoader) {
+                    initialLoader.style.display = 'none';
+                }
+                if (nextIframe) {
+                    swapIframes();
+                } else {
+                    stopTimer();
+                }
+            }
+        });
+
+        function connect() {
+            const socket = new WebSocket(wsUrl);
+
+            socket.onmessage = function(event) {
+                const data = event.data;
+                if (data === 'rebuilding') {
+                    startTimer();
+                } else if (data.startsWith('reload')) {
+                    statusElement.innerText = 'Downloading...';
+                    const files = data.split(':')[1]?.split(',') || [];
+                    
+                    const downloadPromise = files.length > 0 
+                        ? Promise.all(files.map(file => fetch(file, { cache: 'reload' }).then(r => r.arrayBuffer())))
+                        : Promise.resolve();
+
+                    downloadPromise.then(() => {
+                        nextIframe = document.createElement('iframe');
+                        nextIframe.className = 'hidden-iframe';
+                        deviceFrame.appendChild(nextIframe);
+                        nextIframe.src = 'app.html';
+                    }).catch(err => {
+                        console.error('Failed to pre-fetch files, reloading current anyway:', err);
+                        window.location.reload();
+                    });
+                } else if (data === 'error') {
+                    stopTimer();
+                }
+            };
+
+            socket.onclose = function() {
+                setTimeout(connect, 1000);
+            };
+        }
+
+        connect();
+
+        // --- UI Logic (from preview.html) ---
+        let currentDeviceType = 'android';
+
+        function updateScale() {
+            const frame = document.getElementById('device-frame');
+            const container = document.getElementById('preview-container');
+            
+            if (currentDeviceType === 'desktop') {
+                frame.style.transform = 'scale(1)';
+                return;
+            }
+
+            const containerWidth = container.offsetWidth - 80;
+            const containerHeight = container.offsetHeight - 80;
+            
+            const frameWidth = parseInt(frame.style.width);
+            const frameHeight = parseInt(frame.style.height);
+            
+            if (isNaN(frameWidth) || isNaN(frameHeight)) return;
+
+            const totalWidth = frameWidth + 32;
+            const totalHeight = frameHeight + 32;
+
+            const scaleX = containerWidth / totalWidth;
+            const scaleY = containerHeight / totalHeight;
+            const scale = Math.min(1, scaleX, scaleY);
+
+            frame.style.transform = `scale(${scale})`;
+        }
+
+        window.addEventListener('resize', updateScale);
+
+        function setDevice(type, size) {
+            const frame = document.getElementById('device-frame');
+            const desktopBtn = document.getElementById('btn-desktop');
+            const selects = document.querySelectorAll('.device-select');
+            currentDeviceType = type;
+            
+            if (type === 'desktop') {
+                frame.style.width = '100%';
+                frame.style.height = '100%';
+                frame.className = 'desktop';
+                desktopBtn.classList.add('active');
+                selects.forEach(s => s.value = ""); // Clear selections
+            } else {
+                const [width, height] = size.split('x');
+                frame.className = '';
+                frame.style.width = width + 'px';
+                frame.style.height = height + 'px';
+                desktopBtn.classList.remove('active');
+                
+                selects.forEach(s => {
+                    const onchangeAttr = s.getAttribute('onchange');
+                    if (!onchangeAttr || onchangeAttr.indexOf(type) === -1) {
+                        s.selectedIndex = 0; // Reset to "Select device" or default
+                        if (s.id !== 'select-android' && s.id !== 'select-iphone') {
+                             s.value = "";
+                        }
+                    }
+                });
+            }
+            
+            setTimeout(updateScale, 0);
+        }
+
+        function toggleUI(show) {
+            const sidePanel = document.getElementById('side-panel');
+            const topBar = document.getElementById('top-bar');
+            const showBtn = document.getElementById('show-ui-btn');
+            
+            if (show) {
+                sidePanel.style.display = 'flex';
+                topBar.style.display = 'flex';
+                showBtn.style.display = 'none';
+            } else {
+                sidePanel.style.display = 'none';
+                topBar.style.display = 'none';
+                showBtn.style.display = 'block';
+            }
+            setTimeout(updateScale, 0);
+        }
+
+        // Generate QR Code
+        const qrSection = document.getElementById('qr-section');
+        const qrUrlDisplay = document.getElementById('qr-url');
+        const currentUrl = window.location.href;
+
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            qrSection.style.display = 'none';
+        } else {
+            qrUrlDisplay.innerText = currentUrl;
+            new QRCode(document.getElementById("qr-code"), {
+                text: currentUrl,
+                width: 160,
+                height: 160,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+        }
+
+        // Initialize scale
+        updateScale();
+    </script>
+</body>
+</html>
