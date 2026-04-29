@@ -118,6 +118,7 @@ internal fun TileCard(
     val colorFavoritesConfig = featureConfigs?.get("light-color-favorites")
     val showTempControl = domain == "climate" && (featureConfigs == null || "target-temperature" in featureConfigs)
     val showToggle = domain in TOGGLEABLE_DOMAINS && featureConfigs != null && "toggle" in featureConfigs
+    val showVolumeSlider = domain == "media_player" && (featureConfigs == null || "media-player-volume-slider" in featureConfigs)
     val hasBothSliders = showBrightness && showColorTemp
     var showingColorTemp by remember { mutableStateOf(false) }
 
@@ -146,6 +147,9 @@ internal fun TileCard(
                 HorizontalTileBody(
                     icon = icon, accent = accent, name = displayName, stateText = stateText,
                     showToggle = showToggle, isOn = isActive, onToggle = onToggle,
+                    inlineFeature = if (showVolumeSlider) {
+                        { MediaPlayerVolumeFeature(state = state, entityId = entityId ?: "", handler = handler, accent = accent) }
+                    } else null,
                 )
             }
         }
@@ -454,6 +458,104 @@ private fun LightColorTempFeature(
 }
 
 @Composable
+private fun MediaPlayerVolumeFeature(
+    state: HaEntityState?,
+    entityId: String,
+    handler: (HaAction, String?) -> Unit,
+    accent: Color,
+) {
+    val volumeLevel = (state?.attributes?.get("volume_level") as? JsonPrimitive)?.floatOrNull
+    val isMuted = (state?.attributes?.get("is_volume_muted") as? JsonPrimitive)
+        ?.content?.toBooleanStrictOrNull() ?: false
+    val normalizedVolume = if (isMuted) 0f else (volumeLevel ?: 0f).coerceIn(0f, 1f)
+    val isAvailable = state != null && state.state != "unavailable"
+
+    var sliderValue by remember { mutableStateOf(normalizedVolume) }
+    var isDragging by remember { mutableStateOf(false) }
+
+    LaunchedEffect(normalizedVolume) {
+        if (!isDragging) sliderValue = normalizedVolume
+    }
+
+    fun sendVolume(value: Float) {
+        handler(
+            HaAction.PerformAction(
+                action = "media_player.volume_set",
+                target = buildJsonObject { put("entity_id", entityId) },
+                data = buildJsonObject { put("volume_level", value) },
+            ),
+            null,
+        )
+    }
+
+    val animatedValue by animateFloatAsState(
+        targetValue = sliderValue,
+        animationSpec = if (isDragging) snap() else spring(stiffness = Spring.StiffnessMediumLow),
+    )
+
+    var trackWidthPx by remember { mutableStateOf(0f) }
+    val handleWidth = 6.dp
+
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(36.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .onSizeChanged { trackWidthPx = it.width.toFloat() }
+            .pointerInput(isAvailable) {
+                if (!isAvailable) return@pointerInput
+                detectTapGestures { offset ->
+                    val value = (offset.x / trackWidthPx).coerceIn(0f, 1f)
+                    sliderValue = value
+                    sendVolume(value)
+                }
+            }
+            .pointerInput(isAvailable) {
+                if (!isAvailable) return@pointerInput
+                detectDragGestures(
+                    onDragStart = { offset ->
+                        isDragging = true
+                        sliderValue = (offset.x / trackWidthPx).coerceIn(0f, 1f)
+                    },
+                    onDrag = { change, _ ->
+                        change.consume()
+                        sliderValue = (change.position.x / trackWidthPx).coerceIn(0f, 1f)
+                    },
+                    onDragEnd = {
+                        isDragging = false
+                        sendVolume(sliderValue)
+                    },
+                    onDragCancel = { isDragging = false },
+                )
+            },
+    ) {
+        if (animatedValue > 0f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(maxWidth * animatedValue)
+                    .background(accent.copy(alpha = 0.35f))
+            )
+        }
+        if (isAvailable) {
+            val handleOffset = (maxWidth * animatedValue - handleWidth / 2)
+                .coerceAtLeast(0.dp)
+                .coerceAtMost(maxWidth - handleWidth)
+            Box(
+                modifier = Modifier
+                    .width(handleWidth)
+                    .fillMaxHeight()
+                    .offset(x = handleOffset)
+                    .align(Alignment.CenterStart)
+                    .clip(RoundedCornerShape(99.dp))
+                    .background(Color.White.copy(alpha = 0.7f))
+            )
+        }
+    }
+}
+
+@Composable
 private fun LightColorFavoritesFeature(
     config: JsonObject,
     state: HaEntityState?,
@@ -598,6 +700,7 @@ private fun HorizontalTileBody(
     showToggle: Boolean = false,
     isOn: Boolean = false,
     onToggle: (() -> Unit)? = null,
+    inlineFeature: (@Composable () -> Unit)? = null,
 ) {
     Row(
         modifier = Modifier
@@ -633,7 +736,9 @@ private fun HorizontalTileBody(
                 )
             }
         }
-        if (showToggle && onToggle != null) {
+        if (inlineFeature != null) {
+            Box(modifier = Modifier.weight(1f)) { inlineFeature() }
+        } else if (showToggle && onToggle != null) {
             Switch(
                 checked = isOn,
                 onCheckedChange = { onToggle() },
