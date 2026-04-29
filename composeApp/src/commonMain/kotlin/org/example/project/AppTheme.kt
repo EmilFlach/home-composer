@@ -1,10 +1,14 @@
 package org.example.project
 
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import com.materialkolor.PaletteStyle
 import com.materialkolor.rememberDynamicColorScheme
 
@@ -79,14 +83,64 @@ private val LightColors = lightColorScheme(
 fun AppTheme(darkTheme: Boolean, seedColor: Color? = null, content: @Composable () -> Unit) {
     // Always call rememberDynamicColorScheme unconditionally to keep Compose slot order stable.
     // Use the seed when provided, otherwise fall back to the hardcoded schemes.
+    val effectiveSeed = seedColor ?: Color(0xFF6B20D0)
     val dynamicScheme = rememberDynamicColorScheme(
-        seedColor = seedColor ?: Color(0xFF6B20D0),
+        seedColor = effectiveSeed,
         isDark = darkTheme,
-        style = PaletteStyle.Vibrant,
+        // Content keeps the seed hue prominent in the primary palette and produces
+        // an analogous tertiary that harmonizes with it, instead of Vibrant's
+        // generic loud-but-shifted result.
+        style = PaletteStyle.Content,
     )
-    val colorScheme = if (seedColor != null) dynamicScheme else if (darkTheme) DarkColors else LightColors
+    val tinted = remember(dynamicScheme, effectiveSeed, darkTheme) {
+        dynamicScheme.tunedForSeed(effectiveSeed, isDark = darkTheme)
+    }
+    val colorScheme = if (seedColor != null) tinted else if (darkTheme) DarkColors else LightColors
     MaterialTheme(
         colorScheme = colorScheme,
         content = content
     )
+}
+
+// Pull the seed color into background/surface tones so the chrome is noticeably
+// tinted, and force primary to the user's actual pick (the M3 algorithm's
+// tone-80/tone-40 substitute is too muted compared to the swatch the user
+// selected).
+//
+// In dark mode we construct surfaces from pure black + seed at increasing
+// ratios: lerping the M3-generated near-black background toward a bright seed
+// barely shifts it off black, but `lerp(Black, seed, r)` lands directly on a
+// dark tint of the seed's hue. The ratios still grow with elevation so
+// surfaceContainer* keeps an elevation gradient.
+private fun ColorScheme.tunedForSeed(seed: Color, isDark: Boolean): ColorScheme {
+    val onSeed = if (seed.luminance() > 0.45f) Color.Black else Color.White
+    return if (isDark) {
+        copy(
+            primary                 = seed,
+            onPrimary               = onSeed,
+            background              = lerp(Color.Black, seed, 0.20f),
+            surface                 = lerp(Color.Black, seed, 0.20f),
+            surfaceVariant          = lerp(Color.Black, seed, 0.30f),
+            surfaceContainerLowest  = lerp(Color.Black, seed, 0.16f),
+            surfaceContainerLow     = lerp(Color.Black, seed, 0.23f),
+            surfaceContainer        = lerp(Color.Black, seed, 0.27f),
+            surfaceContainerHigh    = lerp(Color.Black, seed, 0.32f),
+            surfaceContainerHighest = lerp(Color.Black, seed, 0.37f),
+        )
+    } else {
+        val surfaceTint = 0.12f
+        val variantTint = 0.16f
+        copy(
+            primary                 = seed,
+            onPrimary               = onSeed,
+            background              = lerp(background, seed, surfaceTint),
+            surface                 = lerp(surface, seed, surfaceTint),
+            surfaceVariant          = lerp(surfaceVariant, seed, variantTint),
+            surfaceContainerLowest  = lerp(surfaceContainerLowest, seed, surfaceTint),
+            surfaceContainerLow     = lerp(surfaceContainerLow, seed, surfaceTint),
+            surfaceContainer        = lerp(surfaceContainer, seed, surfaceTint),
+            surfaceContainerHigh    = lerp(surfaceContainerHigh, seed, surfaceTint),
+            surfaceContainerHighest = lerp(surfaceContainerHighest, seed, surfaceTint),
+        )
+    }
 }

@@ -101,10 +101,7 @@ fun LovelaceDashboardList(
 
     var showSettings by remember { mutableStateOf(false) }
 
-    val bgModifier = if (darkTheme)
-        Modifier.background(NeonGradients.ScreenBackground)
-    else
-        Modifier.background(MaterialTheme.colorScheme.background)
+    val bgModifier = Modifier.background(MaterialTheme.colorScheme.background)
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize().then(bgModifier)) {

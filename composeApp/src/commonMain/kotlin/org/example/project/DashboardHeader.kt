@@ -84,10 +84,14 @@ fun DashboardHeader(
             1.0f to surface,
         )
     } else {
+        // In light mode the controls are white-on-something, so they must sit on
+        // the saturated primary band — not the near-white surface tail. Push the
+        // transition to the bottom of the header so the surface only appears as
+        // a thin trailing strip below the controls.
         arrayOf(
             0.0f to primary,
-            0.6f to primary,
-            1.0f to primary,
+            0.65f to primary,
+            1.0f to surface,
         )
     }
 

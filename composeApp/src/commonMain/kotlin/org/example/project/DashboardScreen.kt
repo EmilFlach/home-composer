@@ -170,10 +170,7 @@ private fun DashboardContent(
 
     val rooms = rememberRooms(state)
 
-    val bgModifier = if (darkTheme)
-        Modifier.background(NeonGradients.ScreenBackground)
-    else
-        Modifier.background(MaterialTheme.colorScheme.background)
+    val bgModifier = Modifier.background(MaterialTheme.colorScheme.background)
 
     LazyColumn(
         modifier = modifier

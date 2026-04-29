@@ -33,8 +33,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -62,26 +60,7 @@ fun LoginScreen(
     var showConnectSheet by remember { mutableStateOf(false) }
     val showcase = remember { buildShowcaseEntityStates() }
 
-    val backgroundModifier = if (darkTheme) {
-        Modifier.background(
-            Brush.verticalGradient(
-                colorStops = arrayOf(
-                    0.0f to Color(0xFF1A0040),
-                    0.4f to Color(0xFF0E0020),
-                    1.0f to Color(0xFF080010),
-                )
-            )
-        )
-    } else {
-        Modifier.background(
-            Brush.verticalGradient(
-                colorStops = arrayOf(
-                    0.0f to Color(0xFFEEE4FF),
-                    1.0f to Color(0xFFF4F0FF),
-                )
-            )
-        )
-    }
+    val backgroundModifier = Modifier.background(MaterialTheme.colorScheme.background)
 
     Column(
         modifier = Modifier
