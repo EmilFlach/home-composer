@@ -35,10 +35,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.eventFlow
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalUriHandler
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.measureTime
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.example.project.auth.ConnectionStatus
@@ -46,9 +53,11 @@ import org.example.project.auth.HomeAssistantClient
 import org.example.project.auth.HomeAssistantConfig
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.filled.Blinds
+import kotlinx.coroutines.isActive
 import org.example.project.auth.HomeAssistantWebSocketClient
 import org.example.project.cards.HaAction
 import org.example.project.cards.LocalHaActionHandler
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val CONNECTION_POLL_INTERVAL_MS = 30_000L
 
@@ -70,11 +79,25 @@ fun DashboardScreen(
                 .onFailure {
                     connectionStatus = ConnectionStatus.Disconnected(it.message ?: "Unknown error")
                 }
-            delay(CONNECTION_POLL_INTERVAL_MS)
+            delay(CONNECTION_POLL_INTERVAL_MS.milliseconds)
         }
     }
-    LaunchedEffect(wsClient, config) {
-        runCatching { wsClient.connect(config) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(wsClient, config, lifecycleOwner) {
+        var backoffMs = 1_000L
+        while (isActive) {
+            val uptime = measureTime { runCatching { wsClient.connect(config) } }
+            if (uptime > 3.seconds) backoffMs = 1_000L
+            if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                delay(backoffMs.milliseconds)
+            } else {
+                // In background: wait for foreground or backoff, whichever comes first
+                withTimeoutOrNull(backoffMs.milliseconds) {
+                    lifecycleOwner.lifecycle.eventFlow.first { it == Lifecycle.Event.ON_RESUME }
+                }
+            }
+            backoffMs = (backoffMs * 2).coerceAtMost(30_000L)
+        }
     }
     val frameCount by wsClient.frameCount.collectAsStateWithLifecycle()
     val latestFrame by wsClient.latestFrame.collectAsStateWithLifecycle()

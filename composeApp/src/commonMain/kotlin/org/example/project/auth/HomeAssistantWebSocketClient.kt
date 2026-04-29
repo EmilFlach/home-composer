@@ -6,6 +6,7 @@ import io.ktor.websocket.Frame
 import io.ktor.websocket.readText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -25,6 +26,7 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
+import kotlin.time.Duration.Companion.milliseconds
 
 class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
     private val json = Json { ignoreUnknownKeys = true }
@@ -75,7 +77,7 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
     fun setOptimisticState(entityId: String, state: HaEntityState) {
         _optimisticStates.value = _optimisticStates.value + (entityId to state)
         clientScope.launch {
-            delay(5_000)
+            delay(5_000.milliseconds)
             _optimisticStates.value = _optimisticStates.value - entityId
         }
     }
@@ -84,10 +86,9 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
         var nextId = 1L
         val pendingRequests = mutableMapOf<Long, PendingRequest>()
 
+        try {
         httpClient.webSocket(config.baseUrl.toWebSocketUrl()) {
-            val sendJob = launch {
-                for (msg in _serviceCallChannel) send(Frame.Text(msg))
-            }
+            var sendJob: Job? = null
             for (frame in incoming) {
                 if (frame !is Frame.Text) continue
                 val text = frame.readText()
@@ -103,6 +104,10 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
                     }
 
                     "auth_ok" -> {
+                        sendJob = launch {
+                            for (msg in _serviceCallChannel) send(Frame.Text(msg))
+                        }
+
                         val listId = nextId++
                         pendingRequests[listId] = PendingRequest.DashboardsList
                         send(Frame.Text("""{"id":$listId,"type":"lovelace/dashboards/list"}"""))
@@ -198,8 +203,9 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
                     }
                 }
             }
-            sendJob.cancel()
+            sendJob?.cancel()
         }
+        } catch (_: Exception) { }
     }
 
     private sealed interface PendingRequest {
