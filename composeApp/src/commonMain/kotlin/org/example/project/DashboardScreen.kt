@@ -72,6 +72,8 @@ fun DashboardScreen(
     onToggleDarkMode: () -> Unit = {},
     currentSeedColor: androidx.compose.ui.graphics.Color? = null,
     onThemeChange: (androidx.compose.ui.graphics.Color) -> Unit = {},
+    useMediaPaletteTheme: Boolean = false,
+    onToggleMediaPaletteTheme: () -> Unit = {},
     onLogout: () -> Unit = {},
 ) {
     val connectionStatus by wsClient.connectionStatus.collectAsStateWithLifecycle()
@@ -159,6 +161,8 @@ fun DashboardScreen(
             },
             currentSeedColor = currentSeedColor,
             onThemeChange = onThemeChange,
+            useMediaPaletteTheme = useMediaPaletteTheme,
+            onToggleMediaPaletteTheme = onToggleMediaPaletteTheme,
             modifier = Modifier.fillMaxSize(),
         )
         moreInfoEntityId?.let { entityId ->

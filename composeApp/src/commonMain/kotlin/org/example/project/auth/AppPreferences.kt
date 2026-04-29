@@ -17,8 +17,13 @@ class AppPreferences(private val settings: Settings) {
             else settings.remove(KEY_THEME_SEED_COLOR)
         }
 
+    var useMediaPaletteTheme: Boolean
+        get() = settings.getBooleanOrNull(KEY_USE_MEDIA_PALETTE_THEME) ?: false
+        set(value) { settings.putBoolean(KEY_USE_MEDIA_PALETTE_THEME, value) }
+
     companion object {
         private const val KEY_DEFAULT_DASHBOARD = "default_dashboard_key"
         private const val KEY_THEME_SEED_COLOR = "theme_seed_color"
+        private const val KEY_USE_MEDIA_PALETTE_THEME = "use_media_palette_theme"
     }
 }

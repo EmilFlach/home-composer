@@ -66,6 +66,8 @@ fun LovelaceDashboardList(
     onSaveDefaultDashboard: (String?) -> Unit = {},
     currentSeedColor: androidx.compose.ui.graphics.Color? = null,
     onThemeChange: (androidx.compose.ui.graphics.Color) -> Unit = {},
+    useMediaPaletteTheme: Boolean = false,
+    onToggleMediaPaletteTheme: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val entries = remember(dashboards, configs, errors) {
@@ -175,6 +177,8 @@ fun LovelaceDashboardList(
                 showSettings = false
             },
             onThemeChange = onThemeChange,
+            useMediaPaletteTheme = useMediaPaletteTheme,
+            onToggleMediaPaletteTheme = onToggleMediaPaletteTheme,
             onDismiss = { showSettings = false },
         )
     }

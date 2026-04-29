@@ -1,5 +1,7 @@
 package org.example.project
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,6 +37,7 @@ import org.example.project.auth.createCacheSettings
 import org.example.project.auth.createHttpClient
 import org.example.project.auth.createSettings
 import androidx.compose.runtime.CompositionLocalProvider
+import org.example.project.cards.LocalOnMediaPaletteAccentChanged
 
 private fun colorToRgbInt(color: Color): Int =
     ((color.red * 255 + 0.5f).toInt() shl 16) or
@@ -66,6 +69,8 @@ fun App() {
     val tokenStorage = remember { TokenStorage(settings) }
     val appPreferences = remember { AppPreferences(settings) }
     var themeSeedColor by remember { mutableStateOf(appPreferences.themeSeedColor?.let { colorFromRgbInt(it) }) }
+    var useMediaPaletteTheme by remember { mutableStateOf(appPreferences.useMediaPaletteTheme) }
+    var mediaPaletteAccentColor by remember { mutableStateOf<Color?>(null) }
     val httpClient = remember { createHttpClient() }
     val haClient = remember { HomeAssistantClient(httpClient) }
     val dashboardCache = remember { DashboardCache(createCacheSettings()) }
@@ -82,10 +87,23 @@ fun App() {
 
     val startRoute = remember { if (tokenStorage.load() != null) Dashboard else Login }
 
-    AppTheme(darkTheme = darkTheme, seedColor = themeSeedColor) {
+    // When media palette theme is on, blend toward album art accent; otherwise use user seed.
+    val rawSeed = if (useMediaPaletteTheme) mediaPaletteAccentColor ?: themeSeedColor else themeSeedColor
+    val animatedSeed by animateColorAsState(
+        targetValue = rawSeed ?: Color(0xFF9B40FF),
+        animationSpec = tween(durationMillis = 800),
+        label = "seedColor",
+    )
+    val seedForTheme: Color? = if (rawSeed != null) animatedSeed else null
+
+    AppTheme(darkTheme = darkTheme, seedColor = seedForTheme) {
         val backStack = rememberNavBackStack(navConfig, startRoute)
 
-        NavDisplay(
+        CompositionLocalProvider(
+            LocalOnMediaPaletteAccentChanged provides if (useMediaPaletteTheme) {
+                accent -> mediaPaletteAccentColor = accent
+            } else null,
+        ) { NavDisplay(
             backStack = backStack,
             onBack = { backStack.removeLastOrNull() },
             entryProvider = entryProvider {
@@ -132,6 +150,12 @@ fun App() {
                                     themeSeedColor = color
                                     appPreferences.themeSeedColor = colorToRgbInt(color)
                                 },
+                                useMediaPaletteTheme = useMediaPaletteTheme,
+                                onToggleMediaPaletteTheme = {
+                                    val next = !useMediaPaletteTheme
+                                    useMediaPaletteTheme = next
+                                    appPreferences.useMediaPaletteTheme = next
+                                },
                                 onLogout = {
                                     tokenStorage.clear()
                                     backStack.clear()
@@ -142,6 +166,6 @@ fun App() {
                     }
                 }
             },
-        )
+        ) }
     }
 }

@@ -1,50 +1,20 @@
 package org.example.project.cards
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.Text
-import org.example.project.icons.HaIcon
-import org.example.project.icons.MdiIcon
-import org.example.project.icons.haEntityIcon
-import org.example.project.icons.mdiIconByName
-import org.example.project.icons.mdiStringToHaIcon
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.spring
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,19 +28,9 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.floatOrNull
-import kotlinx.serialization.json.put
-import org.example.project.auth.HaEntityState
-import org.example.project.auth.domain
-import org.example.project.auth.formatStateValue
-import org.example.project.auth.friendlyName
-import org.example.project.auth.icon
-import org.example.project.auth.isActive
-import org.example.project.auth.unitOfMeasurement
+import kotlinx.serialization.json.*
+import org.example.project.auth.*
+import org.example.project.icons.*
 import kotlin.math.ln
 import kotlin.math.pow
 import kotlin.math.roundToInt
@@ -157,7 +117,6 @@ internal fun TileCard(
             }
         }
         if (showBrightness || showColorTemp) {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             if (!hasBothSliders) {
                 if (showBrightness) LightBrightnessFeature(state = state, entityId = entityId ?: "", handler = handler)
                 else LightColorTempFeature(state = state, entityId = entityId ?: "", handler = handler)
@@ -174,11 +133,9 @@ internal fun TileCard(
             }
         }
         if (showColorFavorites && colorFavoritesConfig != null) {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             LightColorFavoritesFeature(config = colorFavoritesConfig, state = state, entityId = entityId ?: "", handler = handler)
         }
         if (showTempControl) {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             ClimateTemperatureFeature(state = state, accent = accent, entityId = entityId ?: "", handler = handler)
         }
     }

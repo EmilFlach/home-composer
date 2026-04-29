@@ -22,6 +22,7 @@ import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -44,6 +45,8 @@ fun SettingsDialog(
     currentSeedColor: Color? = null,
     onSave: (String?) -> Unit,
     onThemeChange: (Color) -> Unit = {},
+    useMediaPaletteTheme: Boolean = false,
+    onToggleMediaPaletteTheme: () -> Unit = {},
     onDismiss: () -> Unit,
 ) {
     var selectedKey by remember { mutableStateOf(currentDefaultKey) }
@@ -116,7 +119,33 @@ fun SettingsDialog(
                     ThemeSwatch(color = MaterialTheme.colorScheme.secondary, label = "Secondary")
                     ThemeSwatch(color = MaterialTheme.colorScheme.background, label = "Background")
                 }
-                OutlinedButton(onClick = { showColorPicker = true }) {
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                        Text(
+                            text = "Theme from album art",
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            text = "Adapts app colors to the playing media",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Switch(
+                        checked = useMediaPaletteTheme,
+                        onCheckedChange = { onToggleMediaPaletteTheme() },
+                    )
+                }
+
+                OutlinedButton(
+                    onClick = { showColorPicker = true },
+                    enabled = !useMediaPaletteTheme,
+                ) {
                     Text("Set primary color…")
                 }
             }

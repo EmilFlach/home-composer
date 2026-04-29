@@ -1,7 +1,10 @@
 package org.example.project.cards
 
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 import coil3.BitmapImage
+
+val LocalOnMediaPaletteAccentChanged = compositionLocalOf<((Color) -> Unit)?> { null }
 
 data class MediaPalette(
     val background: Color,
