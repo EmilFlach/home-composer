@@ -63,6 +63,7 @@ import kotlinx.serialization.json.floatOrNull
 import kotlinx.serialization.json.put
 import org.example.project.auth.HaEntityState
 import org.example.project.auth.domain
+import org.example.project.auth.formatStateValue
 import org.example.project.auth.friendlyName
 import org.example.project.auth.icon
 import org.example.project.auth.isActive
@@ -335,12 +336,7 @@ private fun ClimateTemperatureFeature(
     }
 }
 
-private fun formatTemp(temp: Float): String {
-    val tenth = (temp * 10).roundToInt()
-    val intPart = tenth / 10
-    val fracPart = tenth % 10
-    return if (fracPart == 0) "$intPart°" else "$intPart.${fracPart}°"
-}
+private fun formatTemp(temp: Float): String = "${temp.roundToInt()}°"
 
 private fun Modifier.percentBackground(fraction: Float, color: Color): Modifier =
     drawBehind {
@@ -452,7 +448,8 @@ private val TOGGLEABLE_DOMAINS = setOf(
 private fun HaEntityState?.formatStateText(entityIdFallback: String?): String {
     if (this == null) return if (entityIdFallback == null) "—" else "Unavailable"
     val unit = unitOfMeasurement
-    val value = humanizeState(state, domain)
+    val humanized = humanizeState(state, domain)
+    val value = if (humanized == state) formatStateValue(state, unit) else humanized
 
     if (domain == "climate" && state != "off") {
         val currentTemp = (attributes["current_temperature"] as? JsonPrimitive)?.floatOrNull

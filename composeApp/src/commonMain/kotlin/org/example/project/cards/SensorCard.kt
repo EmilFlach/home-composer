@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import org.example.project.auth.HaEntityState
+import org.example.project.auth.formatStateValue
 import org.example.project.auth.friendlyName
 import org.example.project.auth.unitOfMeasurement
 
@@ -34,12 +35,11 @@ internal fun SensorCard(
         ?: entityId
         ?: "Unknown sensor"
 
+    val unit = state?.unitOfMeasurement
     val displayValue: String = when {
         state == null -> if (entityId == null) "—" else "unknown"
-        else -> state.state
+        else -> formatStateValue(state.state, unit)
     }
-
-    val unit = state?.unitOfMeasurement
 
     Card(
         modifier = modifier.fillMaxWidth(),

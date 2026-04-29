@@ -1,7 +1,6 @@
 package org.example.project
 
-import kotlin.math.abs
-import kotlin.math.round
+import kotlin.math.roundToInt
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
@@ -48,7 +47,7 @@ fun GraphCard(
                     horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
-                        currentValue.fmt1d(),
+                        currentValue.fmtCurrent(unit),
                         style = MaterialTheme.typography.headlineMedium,
                         color = color
                     )
@@ -132,7 +131,13 @@ fun GraphCard(
     }
 }
 
-private fun Float.fmt1d(): String {
-    val r = round(this * 10).toInt()
-    return "${r / 10}.${abs(r % 10)}"
+private fun Float.fmtCurrent(unit: String): String {
+    val trimmed = unit.trim()
+    val rounded = trimmed == "%" ||
+        trimmed.startsWith("°") ||
+        trimmed.equals("ppm", ignoreCase = true) ||
+        trimmed.startsWith("km", ignoreCase = true)
+    if (rounded) return roundToInt().toString()
+    val tenths = (this * 10).roundToInt()
+    return "${tenths / 10}.${tenths % 10}"
 }
