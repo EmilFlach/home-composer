@@ -7,22 +7,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import org.example.project.icons.HaIcon
-import org.example.project.icons.MdiIcon
-import org.example.project.icons.haEntityIcon
-import org.example.project.icons.mdiStringToHaIcon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -44,6 +34,11 @@ import org.example.project.auth.friendlyName
 import org.example.project.auth.icon
 import org.example.project.auth.isActive
 import org.example.project.auth.unitOfMeasurement
+import org.example.project.icons.HaIcon
+import org.example.project.icons.MdiIcon
+import org.example.project.icons.haEntityIcon
+import org.example.project.icons.mdiIconByName
+import org.example.project.icons.mdiStringToHaIcon
 
 @Composable
 internal fun HeadingCard(
@@ -74,11 +69,10 @@ internal fun HeadingCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 if (icon != null) {
-                    Icon(
-                        imageVector = Icons.Filled.Bookmark,
-                        contentDescription = null,
+                    MdiIcon(
+                        icon = mdiStringToHaIcon(icon, fallback = mdiIconByName("bookmark")),
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(if (isSubtitle) 18.dp else 22.dp),
+                        size = if (isSubtitle) 18.dp else 22.dp,
                     )
                 }
                 Text(
