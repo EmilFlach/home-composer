@@ -52,7 +52,7 @@ fun LovelaceCard(
         "logbook" -> LogbookCardStub(config, modifier)
         "map" -> MapCardStub(config, modifier)
         "markdown" -> MarkdownCardStub(config, modifier)
-        "media-control" -> MediaControlCardStub(config, modifier)
+        "media-control" -> MediaControlCard(config, entityStates, modifier)
         "picture" -> PictureCard(config, entityStates, modifier)
         "picture-elements" -> PictureElementsCardStub(config, modifier)
         "picture-entity" -> PictureEntityCard(config, entityStates, modifier)

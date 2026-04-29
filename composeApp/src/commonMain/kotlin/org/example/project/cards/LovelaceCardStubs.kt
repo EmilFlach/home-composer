@@ -127,13 +127,6 @@ internal fun MarkdownCardStub(config: LovelaceCardConfig, modifier: Modifier = M
 }
 
 @Composable
-internal fun MediaControlCardStub(config: LovelaceCardConfig, modifier: Modifier = Modifier) {
-    StubScaffold(config, modifier) {
-        config.entity?.let { StubLine("entity", it) }
-    }
-}
-
-@Composable
 internal fun PictureElementsCardStub(config: LovelaceCardConfig, modifier: Modifier = Modifier) {
     StubScaffold(config, modifier)
 }
