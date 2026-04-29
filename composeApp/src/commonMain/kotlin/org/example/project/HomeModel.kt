@@ -1,6 +1,7 @@
 package org.example.project
 
 import androidx.compose.ui.graphics.vector.ImageVector
+import kotlin.math.roundToInt
 
 sealed interface EntityState {
     data class Light(
@@ -58,17 +59,17 @@ fun HomeRoom.lightCount(): Int =
     entities.count { it.state is EntityState.Light }
 
 fun HomeEntity.chipLabel(): String = when (val s = state) {
-    is EntityState.Light -> if (s.isOn) "${(s.brightness * 100).toInt()}%" else "Off"
+    is EntityState.Light -> if (s.isOn) "${(s.brightness * 100).roundToInt()}%" else "Off"
     is EntityState.Shutter -> when {
         s.position < 0.05f -> "Open"
         s.position > 0.95f -> "Closed"
-        else -> "${(s.position * 100).toInt()}%"
+        else -> "${(s.position * 100).roundToInt()}%"
     }
-    is EntityState.Climate -> "${s.mode.name} · ${fmtSensor(s.currentTemp)}°C"
+    is EntityState.Climate -> "${s.mode.name} · ${s.currentTemp.roundToInt()}°C"
     is EntityState.Presence -> s.state.name
     is EntityState.MediaPlayer -> if (s.isPlaying) s.trackName ?: "Playing" else "Not playing"
     is EntityState.Switch -> if (s.isOn) "On" else "Off"
-    is EntityState.Sensor -> "${fmtSensor(s.value)} ${s.unit}"
+    is EntityState.Sensor -> "${formatSensorValue(s.value, s.unit)} ${s.unit}"
 }
 
 fun HomeEntity.isActive(): Boolean = when (val s = state) {
@@ -80,7 +81,13 @@ fun HomeEntity.isActive(): Boolean = when (val s = state) {
     else -> false
 }
 
-private fun fmtSensor(v: Float): String {
-    val i = (v * 10).toInt()
-    return "${i / 10}.${i % 10}"
+private fun formatSensorValue(value: Float, unit: String): String {
+    val trimmed = unit.trim()
+    val rounded = trimmed == "%" ||
+        trimmed.startsWith("°") ||
+        trimmed.equals("ppm", ignoreCase = true) ||
+        trimmed.startsWith("km", ignoreCase = true)
+    if (rounded) return value.roundToInt().toString()
+    val tenths = (value * 10).toInt()
+    return "${tenths / 10}.${tenths % 10}"
 }

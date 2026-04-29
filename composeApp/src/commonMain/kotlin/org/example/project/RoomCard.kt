@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 
 @Composable
 fun RoomCard(
@@ -59,7 +60,7 @@ fun RoomCard(
         }
     }
     val subtitle = when {
-        primaryLight?.isOn == true -> "${(primaryLight.brightness * 100).toInt()}%"
+        primaryLight?.isOn == true -> "${(primaryLight.brightness * 100).roundToInt()}%"
         lightTotal > 0 -> "Off"
         else -> "Off"
     }

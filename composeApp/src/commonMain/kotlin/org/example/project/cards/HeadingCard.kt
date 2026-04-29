@@ -39,6 +39,7 @@ import kotlinx.serialization.json.contentOrNull
 import org.example.project.auth.HaEntityState
 import org.example.project.auth.attributeString
 import org.example.project.auth.domain
+import org.example.project.auth.formatStateValue
 import org.example.project.auth.friendlyName
 import org.example.project.auth.icon
 import org.example.project.auth.isActive
@@ -312,7 +313,7 @@ private fun parseBadges(raw: JsonObject?): List<HeadingBadgeConfig> {
 
 private fun HaEntityState.formatBadgeState(): String {
     val unit = unitOfMeasurement
-    if (unit != null) return "$state $unit"
+    if (unit != null) return "${formatStateValue(state, unit)} $unit"
     if (domain != "binary_sensor") return state
     val isOn = state.lowercase() == "on"
     return when (attributeString("device_class")) {

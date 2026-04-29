@@ -1,5 +1,6 @@
 package org.example.project.auth
 
+import kotlin.math.roundToInt
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
@@ -53,3 +54,18 @@ private val INACTIVE_STATES = setOf(
     "off", "closed", "locked", "not_home", "away", "disarmed",
     "idle", "standby", "unavailable", "unknown", "none", "",
 )
+
+fun shouldRoundUnit(unit: String?): Boolean {
+    if (unit == null) return false
+    val trimmed = unit.trim()
+    return trimmed == "%" ||
+        trimmed.startsWith("°") ||
+        trimmed.equals("ppm", ignoreCase = true) ||
+        trimmed.startsWith("km", ignoreCase = true)
+}
+
+fun formatStateValue(value: String, unit: String?): String {
+    if (!shouldRoundUnit(unit)) return value
+    val number = value.toFloatOrNull() ?: return value
+    return number.roundToInt().toString()
+}

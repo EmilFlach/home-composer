@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -203,7 +204,7 @@ fun EntityDetailSheet(
                 // ── Sensors (read-only) ───────────────────────────────────────
                 else -> {
                     val sensorVal = when (val s = entity.state) {
-                        is EntityState.Sensor -> "${s.value} ${s.unit}"
+                        is EntityState.Sensor -> "${s.value.roundToInt()} ${s.unit}"
                         else -> entity.chipLabel()
                     }
                     Text(
@@ -273,10 +274,9 @@ private fun ClimateControl(
     onModeChange: (ClimateMode) -> Unit,
     onTargetChange: (Float) -> Unit
 ) {
-    val i = (currentTemp * 10).toInt()
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
-            "Current: ${i / 10}.${i % 10}°C",
+            "Current: ${currentTemp.roundToInt()}°C",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -304,7 +304,7 @@ private fun ClimateControl(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Target: ${targetTemp.toInt()}°C", style = MaterialTheme.typography.bodyMedium)
+            Text("Target: ${targetTemp.roundToInt()}°C", style = MaterialTheme.typography.bodyMedium)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilledTonalButton(onClick = { onTargetChange(targetTemp - 0.5f) }) { Text("−") }
                 FilledTonalButton(onClick = { onTargetChange(targetTemp + 0.5f) }) { Text("+") }

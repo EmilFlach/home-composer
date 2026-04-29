@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlin.math.PI
 import kotlin.math.cos
+import kotlin.math.roundToInt
 import kotlin.math.sin
 
 @Composable
@@ -146,7 +147,7 @@ fun LightCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        if (isOn) "${(brightness * 100).toInt()}%  ·  $tempLabel" else "Off",
+                        if (isOn) "${(brightness * 100).roundToInt()}%  ·  $tempLabel" else "Off",
                         style = MaterialTheme.typography.labelSmall,
                         color = if (isOn) sunColor else MaterialTheme.colorScheme.onSurfaceVariant
                     )
