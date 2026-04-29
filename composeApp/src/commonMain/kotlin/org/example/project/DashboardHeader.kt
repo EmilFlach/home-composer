@@ -60,18 +60,24 @@ fun DashboardHeader(
         ?: items.firstOrNull()?.title
         ?: "Dashboards"
 
+    val gradientColors = if (darkTheme) {
+        arrayOf(
+            0.0f to Color(0xFF3A0080),
+            0.6f to Color(0xFF1A0040),
+            1.0f to Color(0xFF080010),
+        )
+    } else {
+        arrayOf(
+            0.0f to Color(0xFF7C3AED),
+            0.6f to Color(0xFF6D28D9),
+            1.0f to Color(0xFF5B21B6),
+        )
+    }
+
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(
-                    colorStops = arrayOf(
-                        0.0f to Color(0xFF3A0080),
-                        0.6f to Color(0xFF1A0040),
-                        1.0f to Color(0xFF080010),
-                    ),
-                ),
-            )
+            .background(Brush.verticalGradient(colorStops = gradientColors))
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
     ) {
         Row(
