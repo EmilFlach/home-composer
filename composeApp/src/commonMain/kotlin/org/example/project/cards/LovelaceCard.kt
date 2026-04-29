@@ -33,6 +33,8 @@ fun LovelaceCard(
     modifier: Modifier = Modifier,
 ) {
     val config = card.toCardConfig()
+    val visibility = parseVisibility(config.raw?.get("visibility"))
+    if (!evaluateVisibility(visibility, entityStates)) return
     when (config.type) {
         "sensor" -> SensorCard(config, entityStates, modifier)
 
