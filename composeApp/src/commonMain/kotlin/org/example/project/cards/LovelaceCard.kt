@@ -51,7 +51,7 @@ fun LovelaceCard(
         "history-graph" -> HistoryGraphCard(config, entityStates, modifier)
         "horizontal-stack" -> HorizontalStackCardStub(config, modifier)
         "iframe" -> IframeCardStub(config, modifier)
-        "light" -> LightCardStub(config, modifier)
+        "light" -> TileCard(config, entityStates, modifier)
         "logbook" -> LogbookCardStub(config, modifier)
         "map" -> MapCardStub(config, modifier)
         "markdown" -> MarkdownCardStub(config, modifier)
