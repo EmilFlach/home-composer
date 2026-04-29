@@ -120,6 +120,7 @@ fun LovelaceDashboardList(
                     views = views,
                     selectedIndex = safeViewIndex,
                     onSelect = { selectedViewIndex = it },
+                    darkTheme = darkTheme,
                 )
             }
 
@@ -176,12 +177,15 @@ private fun ViewTabs(
     views: List<LovelaceView>,
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
+    darkTheme: Boolean = false,
 ) {
+    val tabContainerColor = if (darkTheme) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.primary
+    val tabContentColor   = if (darkTheme) MaterialTheme.colorScheme.primary  else MaterialTheme.colorScheme.onPrimary
     PrimaryScrollableTabRow(
         selectedTabIndex = selectedIndex,
         edgePadding = 12.dp,
-        containerColor = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.primary,
+        containerColor = tabContainerColor,
+        contentColor = tabContentColor,
     ) {
         views.forEachIndexed { index, view ->
             Tab(

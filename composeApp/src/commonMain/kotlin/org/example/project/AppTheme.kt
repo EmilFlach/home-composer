@@ -5,6 +5,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import com.materialkolor.PaletteStyle
 import com.materialkolor.rememberDynamicColorScheme
 
 // ── DEEP VIOLET  (dark theme) ────────────────────────────
@@ -81,6 +82,7 @@ fun AppTheme(darkTheme: Boolean, seedColor: Color? = null, content: @Composable 
     val dynamicScheme = rememberDynamicColorScheme(
         seedColor = seedColor ?: Color(0xFF6B20D0),
         isDark = darkTheme,
+        style = PaletteStyle.Vibrant,
     )
     val colorScheme = if (seedColor != null) dynamicScheme else if (darkTheme) DarkColors else LightColors
     MaterialTheme(
