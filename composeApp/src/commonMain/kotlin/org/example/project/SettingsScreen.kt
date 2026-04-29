@@ -109,17 +109,15 @@ fun SettingsDialog(
                 )
 
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     ThemeSwatch(color = MaterialTheme.colorScheme.primary, label = "Primary")
                     ThemeSwatch(color = MaterialTheme.colorScheme.secondary, label = "Secondary")
                     ThemeSwatch(color = MaterialTheme.colorScheme.background, label = "Background")
-                    Spacer(modifier = Modifier.weight(1f))
-                    OutlinedButton(onClick = { showColorPicker = true }) {
-                        Text("Change…")
-                    }
+                }
+                OutlinedButton(onClick = { showColorPicker = true }) {
+                    Text("Set primary color…")
                 }
             }
         },

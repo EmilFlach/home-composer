@@ -94,7 +94,7 @@ fun LoginScreen(
                             Icon(
                                 imageVector = if (darkTheme) Icons.Filled.LightMode else Icons.Filled.DarkMode,
                                 contentDescription = if (darkTheme) "Light mode" else "Dark mode",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(20.dp),
                             )
                         }
@@ -133,7 +133,7 @@ fun LoginScreen(
                         Icon(
                             imageVector = if (darkTheme) Icons.Filled.LightMode else Icons.Filled.DarkMode,
                             contentDescription = if (darkTheme) "Light mode" else "Dark mode",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(20.dp),
                         )
                     }
