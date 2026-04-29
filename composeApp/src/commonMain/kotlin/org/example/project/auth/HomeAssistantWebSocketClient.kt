@@ -124,6 +124,7 @@ class HomeAssistantWebSocketClient(
             _entityDeviceIds.value = reg.entityDeviceIds
             _floors.value = reg.floors
             _areaFloorIds.value = reg.areaFloorIds
+            if (reg.temperatureUnit != null) _temperatureUnit.value = reg.temperatureUnit
         }
     }
 
@@ -436,7 +437,10 @@ class HomeAssistantWebSocketClient(
                                 val obj = result as? JsonObject ?: continue
                                 val unitSystem = obj["unit_system"] as? JsonObject ?: continue
                                 val tempUnit = (unitSystem["temperature"] as? JsonPrimitive)?.contentOrNull
-                                if (tempUnit != null) _temperatureUnit.value = tempUnit
+                                if (tempUnit != null) {
+                                    _temperatureUnit.value = tempUnit
+                                    if (registriesReceived == 4) maybeSaveRegistry()
+                                }
                             }
                         }
                     }
@@ -485,6 +489,7 @@ class HomeAssistantWebSocketClient(
                 entityDeviceIds = _entityDeviceIds.value,
                 floors = _floors.value,
                 areaFloorIds = _areaFloorIds.value,
+                temperatureUnit = _temperatureUnit.value,
             )
         )
     }

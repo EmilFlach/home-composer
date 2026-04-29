@@ -52,4 +52,5 @@ data class CachedRegistry(
     val entityDeviceIds: Map<String, String>,
     val floors: Map<String, String>,
     val areaFloorIds: Map<String, String>,
+    val temperatureUnit: String? = null,
 )
