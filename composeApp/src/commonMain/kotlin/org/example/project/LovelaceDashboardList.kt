@@ -309,16 +309,13 @@ private fun LazyView(
         } else {
             sections.forEachIndexed { sectionIndex, section ->
                 val isVisible = evaluateVisibility(parseVisibility(section.visibility), entityStates)
-                item(key = "section-$sectionIndex") {
-                    AnimatedVisibility(
-                        visible = isVisible,
-                        enter = fadeIn() + expandVertically(),
-                        exit = fadeOut() + shrinkVertically(),
-                    ) {
-                        Column {
-                            SectionContent(section = section, entityStates = entityStates)
-                            Spacer(Modifier.height(12.dp))
-                        }
+                if (isVisible) {
+                    item(key = "section-$sectionIndex") {
+                        SectionContent(
+                            section = section,
+                            entityStates = entityStates,
+                            modifier = Modifier.animateItem(),
+                        )
                     }
                 }
             }
@@ -358,7 +355,7 @@ private fun SectionsGrid(
                     AnimatedVisibility(
                         visible = isVisible,
                         enter = fadeIn() + expandVertically(),
-                        exit = fadeOut() + shrinkVertically(),
+                        exit = fadeOut() + shrinkVertically(clip = false),
                     ) {
                         SectionContent(section = section, entityStates = entityStates)
                     }
