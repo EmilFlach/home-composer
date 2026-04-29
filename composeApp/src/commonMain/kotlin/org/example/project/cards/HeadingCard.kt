@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -125,7 +126,7 @@ private fun HeadingBadge(
             if (badge.icon != null) {
                 MdiIcon(
                     icon = mdiStringToHaIcon(badge.icon, fallback = haEntityIcon(null, badge.entity)),
-                    size = 16.dp,
+                    size = 18.dp,
                 )
             }
             if (label != null) {
@@ -178,7 +179,7 @@ private fun HeadingBadge(
         isActive = state?.isActive() ?: false,
     ) {
         if (badgeHaIcon != null) {
-            MdiIcon(icon = badgeHaIcon, size = 16.dp)
+            MdiIcon(icon = badgeHaIcon, size = 18.dp, modifier = Modifier.offset(2.dp))
         }
         if (displayName != null) {
             Text(
