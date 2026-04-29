@@ -27,10 +27,13 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import org.example.project.icons.HaIcon
 import org.example.project.icons.MdiIcon
 import org.example.project.icons.haEntityIcon
+import org.example.project.icons.mdiIconByName
 import org.example.project.icons.mdiStringToHaIcon
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -68,6 +71,8 @@ import org.example.project.auth.friendlyName
 import org.example.project.auth.icon
 import org.example.project.auth.isActive
 import org.example.project.auth.unitOfMeasurement
+import kotlin.math.ln
+import kotlin.math.pow
 import kotlin.math.roundToInt
 
 @Composable
@@ -96,11 +101,23 @@ internal fun TileCard(
     val domain = state?.domain ?: entityId?.substringBefore('.', missingDelimiterValue = "") ?: ""
 
     val featuresArray = raw?.get("features") as? JsonArray
-    val featureTypes: Set<String>? = featuresArray?.mapNotNull {
-        ((it as? JsonObject)?.get("type") as? JsonPrimitive)?.content
-    }?.toSet()
-    val showBrightness = domain == "light" && (featureTypes == null || "light-brightness" in featureTypes)
-    val showTempControl = domain == "climate" && (featureTypes == null || "target-temperature" in featureTypes)
+    val featureConfigs: Map<String, JsonObject>? = featuresArray?.let { arr ->
+        buildMap {
+            for (elem in arr) {
+                val obj = elem as? JsonObject ?: continue
+                val type = (obj["type"] as? JsonPrimitive)?.content ?: continue
+                put(type, obj)
+            }
+        }
+    }
+    val showBrightness = domain == "light" && (featureConfigs == null || "light-brightness" in featureConfigs)
+    val showColorTemp = domain == "light" && featureConfigs != null && "light-color-temp" in featureConfigs
+    val showColorFavorites = domain == "light" && featureConfigs != null && "light-color-favorites" in featureConfigs
+    val colorFavoritesConfig = featureConfigs?.get("light-color-favorites")
+    val showTempControl = domain == "climate" && (featureConfigs == null || "target-temperature" in featureConfigs)
+    val showToggle = domain in TOGGLEABLE_DOMAINS && featureConfigs != null && "toggle" in featureConfigs
+    val hasBothSliders = showBrightness && showColorTemp
+    var showingColorTemp by remember { mutableStateOf(false) }
 
     val isToggleable = domain in TOGGLEABLE_DOMAINS
     val handler = LocalHaActionHandler.current
@@ -119,14 +136,37 @@ internal fun TileCard(
                 .then(if (percent != null) Modifier.percentBackground(percent, accent) else Modifier),
         ) {
             if (vertical) {
-                VerticalTileBody(icon = icon, accent = accent, name = displayName, stateText = stateText)
+                VerticalTileBody(
+                    icon = icon, accent = accent, name = displayName, stateText = stateText,
+                    showToggle = showToggle, isOn = isActive, onToggle = onToggle,
+                )
             } else {
-                HorizontalTileBody(icon = icon, accent = accent, name = displayName, stateText = stateText)
+                HorizontalTileBody(
+                    icon = icon, accent = accent, name = displayName, stateText = stateText,
+                    showToggle = showToggle, isOn = isActive, onToggle = onToggle,
+                )
             }
         }
-        if (showBrightness) {
+        if (showBrightness || showColorTemp) {
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-            LightBrightnessFeature(state = state, accent = accent, entityId = entityId ?: "", handler = handler)
+            if (!hasBothSliders) {
+                if (showBrightness) LightBrightnessFeature(state = state, entityId = entityId ?: "", handler = handler)
+                else LightColorTempFeature(state = state, entityId = entityId ?: "", handler = handler)
+            } else if (!showingColorTemp) {
+                LightBrightnessFeature(
+                    state = state, entityId = entityId ?: "", handler = handler,
+                    onSwitchToColorTemp = { showingColorTemp = true },
+                )
+            } else {
+                LightColorTempFeature(
+                    state = state, entityId = entityId ?: "", handler = handler,
+                    onSwitchToBrightness = { showingColorTemp = false },
+                )
+            }
+        }
+        if (showColorFavorites && colorFavoritesConfig != null) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            LightColorFavoritesFeature(config = colorFavoritesConfig, state = state, entityId = entityId ?: "", handler = handler)
         }
         if (showTempControl) {
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
@@ -153,13 +193,14 @@ internal fun TileCard(
 @Composable
 private fun LightBrightnessFeature(
     state: HaEntityState?,
-    accent: Color,
     entityId: String,
     handler: (HaAction, String?) -> Unit,
+    onSwitchToColorTemp: (() -> Unit)? = null,
 ) {
     val rawBrightness = (state?.attributes?.get("brightness") as? JsonPrimitive)?.floatOrNull
     val normalizedBrightness = rawBrightness?.let { it / 255f }?.coerceIn(0f, 1f) ?: 0f
     val isOn = state?.isActive() ?: false
+    val lightColor = state.lightColor()
 
     var sliderValue by remember { mutableStateOf(normalizedBrightness) }
     var isDragging by remember { mutableStateOf(false) }
@@ -184,73 +225,264 @@ private fun LightBrightnessFeature(
         targetValue = sliderValue,
         animationSpec = if (isDragging) snap() else spring(stiffness = Spring.StiffnessMediumLow),
     )
+    val animatedIsOn by animateFloatAsState(
+        targetValue = if (isOn) 1f else 0f,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+    )
+
+    var trackWidthPx by remember { mutableStateOf(0f) }
+    val handleWidth = 8.dp
+    val fillGradient = Brush.horizontalGradient(
+        colors = listOf(lightColor.copy(alpha = 0.6f * animatedIsOn), lightColor.copy(alpha = animatedIsOn))
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        BoxWithConstraints(
+            modifier = Modifier
+                .weight(1f)
+                .height(50.dp)
+                .clip(RoundedCornerShape(15.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                .onSizeChanged { trackWidthPx = it.width.toFloat() }
+                .pointerInput(isOn) {
+                    if (!isOn) return@pointerInput
+                    detectTapGestures { offset ->
+                        val value = (offset.x / trackWidthPx).coerceIn(0f, 1f)
+                        sliderValue = value
+                        sendBrightness(value)
+                    }
+                }
+                .pointerInput(isOn) {
+                    if (!isOn) return@pointerInput
+                    detectDragGestures(
+                        onDragStart = { offset ->
+                            isDragging = true
+                            sliderValue = (offset.x / trackWidthPx).coerceIn(0f, 1f)
+                        },
+                        onDrag = { change, _ ->
+                            change.consume()
+                            sliderValue = (change.position.x / trackWidthPx).coerceIn(0f, 1f)
+                        },
+                        onDragEnd = {
+                            isDragging = false
+                            sendBrightness(sliderValue)
+                        },
+                        onDragCancel = { isDragging = false },
+                    )
+                }
+        ) {
+            if (animatedSliderValue > 0f && animatedIsOn > 0f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(maxWidth * animatedSliderValue)
+                        .background(fillGradient)
+                )
+            }
+            if (animatedIsOn > 0f && animatedSliderValue > 0f) {
+                val handleOffset = (maxWidth * animatedSliderValue - handleWidth / 2)
+                    .coerceAtLeast(0.dp)
+                    .coerceAtMost(maxWidth - handleWidth)
+                Box(
+                    modifier = Modifier
+                        .width(handleWidth)
+                        .fillMaxHeight()
+                        .offset(x = handleOffset)
+                        .align(Alignment.CenterStart)
+                        .clip(RoundedCornerShape(99.dp))
+                        .background(Color.White.copy(alpha = 0.7f * animatedIsOn))
+                )
+            }
+        }
+        if (onSwitchToColorTemp != null) {
+            Box(
+                modifier = Modifier
+                    .size(50.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .pointerInput(Unit) { detectTapGestures { onSwitchToColorTemp() } },
+                contentAlignment = Alignment.Center,
+            ) {
+                MdiIcon(
+                    icon = mdiIconByName("thermometer"),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    size = 20.dp,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LightColorTempFeature(
+    state: HaEntityState?,
+    entityId: String,
+    handler: (HaAction, String?) -> Unit,
+    onSwitchToBrightness: (() -> Unit)? = null,
+) {
+    val minMireds = (state?.attributes?.get("min_mireds") as? JsonPrimitive)?.floatOrNull ?: 153f
+    val maxMireds = (state?.attributes?.get("max_mireds") as? JsonPrimitive)?.floatOrNull ?: 500f
+    val rawColorTemp = (state?.attributes?.get("color_temp") as? JsonPrimitive)?.floatOrNull
+    // 0 = warmest (max mireds), 1 = coolest (min mireds)
+    val normalizedColorTemp = rawColorTemp
+        ?.let { ((maxMireds - it) / (maxMireds - minMireds)).coerceIn(0f, 1f) }
+        ?: 0.5f
+    val isOn = state?.isActive() ?: false
+
+    var sliderValue by remember { mutableStateOf(normalizedColorTemp) }
+    var isDragging by remember { mutableStateOf(false) }
+
+    LaunchedEffect(normalizedColorTemp) {
+        if (!isDragging) sliderValue = normalizedColorTemp
+    }
+
+    fun sendColorTemp(value: Float) {
+        val mireds = (maxMireds - value * (maxMireds - minMireds)).roundToInt()
+            .coerceIn(minMireds.toInt(), maxMireds.toInt())
+        handler(
+            HaAction.PerformAction(
+                action = "light.turn_on",
+                target = buildJsonObject { put("entity_id", entityId) },
+                data = buildJsonObject { put("color_temp", mireds) },
+            ),
+            null,
+        )
+    }
+
+    val animatedSliderValue by animateFloatAsState(
+        targetValue = sliderValue,
+        animationSpec = if (isDragging) snap() else spring(stiffness = Spring.StiffnessMediumLow),
+    )
+
+    val animatedIsOn by animateFloatAsState(
+        targetValue = if (isOn) 1f else 0f,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+    )
 
     var trackWidthPx by remember { mutableStateOf(0f) }
     val handleWidth = 8.dp
     val fillGradient = Brush.horizontalGradient(
         colors = listOf(
-            Color(0xFFFFE08C).copy(alpha = 0.96f),
-            Color(0xFFFFCC66).copy(alpha = 0.97f),
-            Color(0xFFFFB347).copy(alpha = 0.99f),
-            Color(0xFFFF9F2F).copy(alpha = 1f),
+            Color(0xFFFF9F2F).copy(alpha = animatedIsOn),
+            Color(0xFFFFE08C).copy(alpha = animatedIsOn),
+            Color(0xFFFFFFFF).copy(alpha = animatedIsOn),
+            Color(0xFFD0EEFF).copy(alpha = animatedIsOn),
         )
     )
 
-    BoxWithConstraints(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-            .height(34.dp)
-            .clip(RoundedCornerShape(15.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-            .onSizeChanged { trackWidthPx = it.width.toFloat() }
-            .pointerInput(isOn) {
-                if (!isOn) return@pointerInput
-                detectTapGestures { offset ->
-                    val value = (offset.x / trackWidthPx).coerceIn(0f, 1f)
-                    sliderValue = value
-                    sendBrightness(value)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        BoxWithConstraints(
+            modifier = Modifier
+                .weight(1f)
+                .height(50.dp)
+                .clip(RoundedCornerShape(15.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                .onSizeChanged { trackWidthPx = it.width.toFloat() }
+                .pointerInput(isOn) {
+                    if (!isOn) return@pointerInput
+                    detectTapGestures { offset ->
+                        val value = (offset.x / trackWidthPx).coerceIn(0f, 1f)
+                        sliderValue = value
+                        sendColorTemp(value)
+                    }
                 }
-            }
-            .pointerInput(isOn) {
-                if (!isOn) return@pointerInput
-                detectDragGestures(
-                    onDragStart = { offset ->
-                        isDragging = true
-                        sliderValue = (offset.x / trackWidthPx).coerceIn(0f, 1f)
-                    },
-                    onDrag = { change, _ ->
-                        change.consume()
-                        sliderValue = (change.position.x / trackWidthPx).coerceIn(0f, 1f)
-                    },
-                    onDragEnd = {
-                        isDragging = false
-                        sendBrightness(sliderValue)
-                    },
-                    onDragCancel = { isDragging = false },
+                .pointerInput(isOn) {
+                    if (!isOn) return@pointerInput
+                    detectDragGestures(
+                        onDragStart = { offset ->
+                            isDragging = true
+                            sliderValue = (offset.x / trackWidthPx).coerceIn(0f, 1f)
+                        },
+                        onDrag = { change, _ ->
+                            change.consume()
+                            sliderValue = (change.position.x / trackWidthPx).coerceIn(0f, 1f)
+                        },
+                        onDragEnd = {
+                            isDragging = false
+                            sendColorTemp(sliderValue)
+                        },
+                        onDragCancel = { isDragging = false },
+                    )
+                }
+        ) {
+            if (animatedIsOn > 0f) {
+                Box(modifier = Modifier.fillMaxHeight().fillMaxWidth().background(fillGradient))
+                val handleOffset = (maxWidth * animatedSliderValue - handleWidth / 2)
+                    .coerceAtLeast(0.dp)
+                    .coerceAtMost(maxWidth - handleWidth)
+                Box(
+                    modifier = Modifier
+                        .width(handleWidth)
+                        .fillMaxHeight()
+                        .offset(x = handleOffset)
+                        .align(Alignment.CenterStart)
+                        .clip(RoundedCornerShape(99.dp))
+                        .background(Color.White.copy(alpha = 0.85f * animatedIsOn))
                 )
             }
-    ) {
-        if (animatedSliderValue > 0f && isOn) {
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .width(maxWidth * animatedSliderValue)
-                    .background(fillGradient)
-            )
         }
-        if (isOn && animatedSliderValue > 0f) {
-            val handleOffset = (maxWidth * animatedSliderValue - handleWidth / 2)
-                .coerceAtLeast(0.dp)
-                .coerceAtMost(maxWidth - handleWidth)
+        if (onSwitchToBrightness != null) {
             Box(
                 modifier = Modifier
-                    .width(handleWidth)
-                    .fillMaxHeight()
-                    .offset(x = handleOffset)
-                    .align(Alignment.CenterStart)
-                    .clip(RoundedCornerShape(99.dp))
-                    .background(Color.White.copy(alpha = 0.7f))
+                    .size(50.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .pointerInput(Unit) { detectTapGestures { onSwitchToBrightness() } },
+                contentAlignment = Alignment.Center,
+            ) {
+                MdiIcon(
+                    icon = mdiIconByName("brightness-5"),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    size = 20.dp,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LightColorFavoritesFeature(
+    config: JsonObject,
+    state: HaEntityState?,
+    entityId: String,
+    handler: (HaAction, String?) -> Unit,
+) {
+    val isOn = state?.isActive() ?: false
+    val favorites = remember(config, entityId) { parseFavoriteColors(config, entityId) }
+    if (favorites.isEmpty()) return
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        favorites.forEach { favorite ->
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (isOn) favorite.displayColor
+                        else favorite.displayColor.copy(alpha = 0.35f)
+                    )
+                    .then(
+                        if (isOn) Modifier.pointerInput(favorite.action) {
+                            detectTapGestures { handler(favorite.action, null) }
+                        } else Modifier
+                    ),
             )
         }
     }
@@ -361,11 +593,19 @@ private fun HorizontalTileBody(
     accent: Color,
     name: String,
     stateText: String?,
+    showToggle: Boolean = false,
+    isOn: Boolean = false,
+    onToggle: (() -> Unit)? = null,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .padding(
+                start = 14.dp,
+                end = if (showToggle) 8.dp else 14.dp,
+                top = 12.dp,
+                bottom = 12.dp,
+            ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -391,6 +631,16 @@ private fun HorizontalTileBody(
                 )
             }
         }
+        if (showToggle && onToggle != null) {
+            Switch(
+                checked = isOn,
+                onCheckedChange = { onToggle() },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = accent,
+                ),
+            )
+        }
     }
 }
 
@@ -400,6 +650,9 @@ private fun VerticalTileBody(
     accent: Color,
     name: String,
     stateText: String?,
+    showToggle: Boolean = false,
+    isOn: Boolean = false,
+    onToggle: (() -> Unit)? = null,
 ) {
     Column(
         modifier = Modifier
@@ -424,6 +677,16 @@ private fun VerticalTileBody(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (showToggle && onToggle != null) {
+            Switch(
+                checked = isOn,
+                onCheckedChange = { onToggle() },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = accent,
+                ),
             )
         }
     }
@@ -520,6 +783,107 @@ private fun resolveAccent(colorName: String?, isActive: Boolean): Color {
     }
     if (named != null) return named
     return if (isActive) scheme.primary else scheme.onSurfaceVariant
+}
+
+private fun HaEntityState?.lightColor(): Color {
+    val rgbArr = this?.attributes?.get("rgb_color") as? JsonArray
+    if (rgbArr != null && rgbArr.size >= 3) {
+        val r = (rgbArr[0] as? JsonPrimitive)?.content?.toIntOrNull() ?: return Color(0xFFFFCC66)
+        val g = (rgbArr[1] as? JsonPrimitive)?.content?.toIntOrNull() ?: return Color(0xFFFFCC66)
+        val b = (rgbArr[2] as? JsonPrimitive)?.content?.toIntOrNull() ?: return Color(0xFFFFCC66)
+        return Color(r, g, b)
+    }
+    val colorTemp = (this?.attributes?.get("color_temp") as? JsonPrimitive)?.floatOrNull
+    if (colorTemp != null) {
+        val kelvin = (1_000_000f / colorTemp).toInt().coerceIn(1000, 12000)
+        return kelvinToColor(kelvin)
+    }
+    return Color(0xFFFFCC66)
+}
+
+private data class FavoriteColor(val displayColor: Color, val action: HaAction)
+
+private fun parseFavoriteColors(config: JsonObject, entityId: String): List<FavoriteColor> {
+    val arr = config["favorite_colors"] as? JsonArray ?: return emptyList()
+    return arr.mapNotNull { elem ->
+        val obj = elem as? JsonObject ?: return@mapNotNull null
+        val kelvin = (obj["color_temp_kelvin"] as? JsonPrimitive)?.content?.toIntOrNull()
+        if (kelvin != null) {
+            val mireds = (1_000_000 / kelvin).coerceIn(1, 1000)
+            return@mapNotNull FavoriteColor(
+                displayColor = kelvinToColor(kelvin),
+                action = HaAction.PerformAction(
+                    action = "light.turn_on",
+                    target = buildJsonObject { put("entity_id", entityId) },
+                    data = buildJsonObject { put("color_temp", mireds) },
+                ),
+            )
+        }
+        val hsArr = obj["hs_color"] as? JsonArray
+        if (hsArr != null && hsArr.size >= 2) {
+            val h = (hsArr[0] as? JsonPrimitive)?.floatOrNull ?: return@mapNotNull null
+            val s = (hsArr[1] as? JsonPrimitive)?.floatOrNull ?: return@mapNotNull null
+            return@mapNotNull FavoriteColor(
+                displayColor = hsvToColor(h, s),
+                action = HaAction.PerformAction(
+                    action = "light.turn_on",
+                    target = buildJsonObject { put("entity_id", entityId) },
+                    data = buildJsonObject {
+                        put("hs_color", JsonArray(listOf(JsonPrimitive(h), JsonPrimitive(s))))
+                    },
+                ),
+            )
+        }
+        val rgbArr = obj["rgb_color"] as? JsonArray
+        if (rgbArr != null && rgbArr.size >= 3) {
+            val r = (rgbArr[0] as? JsonPrimitive)?.content?.toIntOrNull() ?: return@mapNotNull null
+            val g = (rgbArr[1] as? JsonPrimitive)?.content?.toIntOrNull() ?: return@mapNotNull null
+            val b = (rgbArr[2] as? JsonPrimitive)?.content?.toIntOrNull() ?: return@mapNotNull null
+            return@mapNotNull FavoriteColor(
+                displayColor = Color(r, g, b),
+                action = HaAction.PerformAction(
+                    action = "light.turn_on",
+                    target = buildJsonObject { put("entity_id", entityId) },
+                    data = buildJsonObject {
+                        put("rgb_color", JsonArray(listOf(JsonPrimitive(r), JsonPrimitive(g), JsonPrimitive(b))))
+                    },
+                ),
+            )
+        }
+        null
+    }
+}
+
+private fun kelvinToColor(kelvin: Int): Color {
+    val t = kelvin / 100.0
+    val r = if (t <= 66) 1f
+             else ((329.698727446 * (t - 60.0).pow(-0.1332047592)) / 255.0).toFloat().coerceIn(0f, 1f)
+    val g = if (t <= 66) ((99.4708025861 * ln(t) - 161.1195681661) / 255.0).toFloat().coerceIn(0f, 1f)
+             else ((288.1221695283 * (t - 60.0).pow(-0.0755148492)) / 255.0).toFloat().coerceIn(0f, 1f)
+    val b = when {
+        t >= 66 -> 1f
+        t <= 19 -> 0f
+        else -> ((138.5177312231 * ln(t - 10.0) - 305.0447927307) / 255.0).toFloat().coerceIn(0f, 1f)
+    }
+    return Color(r, g, b)
+}
+
+private fun hsvToColor(hue: Float, saturation: Float): Color {
+    val h = hue / 60f
+    val s = saturation / 100f
+    val i = h.toInt()
+    val f = h - i
+    val p = 1f - s
+    val q = 1f - f * s
+    val t = 1f - (1f - f) * s
+    return when (i % 6) {
+        0 -> Color(1f, t, p)
+        1 -> Color(q, 1f, p)
+        2 -> Color(p, 1f, t)
+        3 -> Color(p, q, 1f)
+        4 -> Color(t, p, 1f)
+        else -> Color(1f, p, q)
+    }
 }
 
 private fun boolField(obj: JsonObject?, key: String, default: Boolean): Boolean {
