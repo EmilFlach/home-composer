@@ -39,6 +39,7 @@ data class LovelaceSection(
     val title: String? = null,
     val type: String? = null,
     val cards: List<JsonElement> = emptyList(),
+    val visibility: JsonElement? = null,
 )
 
 @Serializable

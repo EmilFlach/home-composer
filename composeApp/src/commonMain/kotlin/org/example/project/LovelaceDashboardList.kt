@@ -8,10 +8,13 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -40,6 +43,8 @@ import org.example.project.auth.LovelaceConfig
 import org.example.project.auth.LovelaceDashboard
 import org.example.project.auth.LovelaceView
 import org.example.project.cards.LovelaceCard
+import org.example.project.cards.evaluateVisibility
+import org.example.project.cards.parseVisibility
 
 @Composable
 fun LovelaceDashboardList(
@@ -252,8 +257,15 @@ private fun LazyView(
 ) {
     val rootCards = view.cards
     val sections = view.sections
+    val listState = rememberLazyListState()
+    val statesLoaded = entityStates.isNotEmpty()
+
+    LaunchedEffect(statesLoaded) {
+        if (statesLoaded) listState.scrollToItem(0)
+    }
 
     LazyColumn(
+        state = listState,
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(12.dp),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
@@ -279,8 +291,12 @@ private fun LazyView(
         }
 
         sections.forEachIndexed { sectionIndex, section ->
+            if (!evaluateVisibility(parseVisibility(section.visibility), entityStates)) return@forEachIndexed
             items(section.cards.size, key = { "section-$sectionIndex-card-$it" }) { cardIndex ->
                 LovelaceCard(card = section.cards[cardIndex], entityStates = entityStates)
+            }
+            item(key = "section-$sectionIndex-spacer") {
+                Spacer(Modifier.height(12.dp))
             }
         }
     }

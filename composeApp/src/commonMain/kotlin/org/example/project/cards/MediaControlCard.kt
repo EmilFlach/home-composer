@@ -144,7 +144,7 @@ internal fun MediaControlCard(
     val textPrimary by animateColorAsState(palette?.onBackground ?: MaterialTheme.colorScheme.onSurface, animationSpec = tween(600))
     val textSecondary by animateColorAsState((palette?.onBackground ?: MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.75f), animationSpec = tween(600))
 
-    val cardShape = RoundedCornerShape(16.dp)
+    val cardShape = LocalCardShape.current
     val density = LocalDensity.current
     var columnHeightPx by remember { mutableStateOf(0) }
     val coverSizeDp = with(density) { columnHeightPx.toDp() }

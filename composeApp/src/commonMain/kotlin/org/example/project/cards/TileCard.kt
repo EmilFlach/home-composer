@@ -128,7 +128,7 @@ internal fun TileCard(
         { handler(HaAction.Toggle(entityId), entityId) }
     } else null
 
-    val cardShape = RoundedCornerShape(16.dp)
+    val cardShape = LocalCardShape.current
     val cardColors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
 
     @Composable
@@ -702,14 +702,17 @@ private fun HorizontalTileBody(
     onToggle: (() -> Unit)? = null,
     inlineFeature: (@Composable () -> Unit)? = null,
 ) {
+    val groupPosition = LocalCardGroupPosition.current
+    val topPadding = if (groupPosition == CardGroupPosition.FIRST || groupPosition == CardGroupPosition.ONLY) 12.dp else 8.dp
+    val bottomPadding = if (groupPosition == CardGroupPosition.LAST || groupPosition == CardGroupPosition.ONLY) 12.dp else 8.dp
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(
                 start = 14.dp,
                 end = if (showToggle) 8.dp else 14.dp,
-                top = 12.dp,
-                bottom = 12.dp,
+                top = topPadding,
+                bottom = bottomPadding,
             ),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -761,10 +764,13 @@ private fun VerticalTileBody(
     isOn: Boolean = false,
     onToggle: (() -> Unit)? = null,
 ) {
+    val groupPosition = LocalCardGroupPosition.current
+    val topPadding = if (groupPosition == CardGroupPosition.FIRST || groupPosition == CardGroupPosition.ONLY) 14.dp else 8.dp
+    val bottomPadding = if (groupPosition == CardGroupPosition.LAST || groupPosition == CardGroupPosition.ONLY) 14.dp else 8.dp
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 14.dp),
+            .padding(start = 14.dp, end = 14.dp, top = topPadding, bottom = bottomPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {

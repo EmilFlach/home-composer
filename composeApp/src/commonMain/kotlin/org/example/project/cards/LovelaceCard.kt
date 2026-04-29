@@ -75,7 +75,7 @@ fun LovelaceCard(
         "thermostat" -> ThermostatCardStub(config, modifier)
         "tile" -> TileCard(config, entityStates, modifier)
         "todo-list" -> TodoListCardStub(config, modifier)
-        "vertical-stack" -> VerticalStackCardStub(config, modifier)
+        "vertical-stack" -> VerticalStackCard(config, entityStates, modifier)
         "weather-forecast" -> WeatherForecastCard(config, entityStates, modifier)
 
         else -> UnknownCardStub(config, modifier)
@@ -159,7 +159,7 @@ internal fun StubScaffold(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = LocalCardShape.current,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
         ),
