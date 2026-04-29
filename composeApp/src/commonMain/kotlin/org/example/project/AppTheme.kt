@@ -5,6 +5,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import com.materialkolor.rememberDynamicColorScheme
 
 // ── DEEP VIOLET  (dark theme) ────────────────────────────
 private val DarkColors = darkColorScheme(
@@ -74,9 +75,16 @@ private val LightColors = lightColorScheme(
 )
 
 @Composable
-fun AppTheme(darkTheme: Boolean, content: @Composable () -> Unit) {
+fun AppTheme(darkTheme: Boolean, seedColor: Color? = null, content: @Composable () -> Unit) {
+    // Always call rememberDynamicColorScheme unconditionally to keep Compose slot order stable.
+    // Use the seed when provided, otherwise fall back to the hardcoded schemes.
+    val dynamicScheme = rememberDynamicColorScheme(
+        seedColor = seedColor ?: Color(0xFF6B20D0),
+        isDark = darkTheme,
+    )
+    val colorScheme = if (seedColor != null) dynamicScheme else if (darkTheme) DarkColors else LightColors
     MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
+        colorScheme = colorScheme,
         content = content
     )
 }

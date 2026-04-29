@@ -71,6 +71,8 @@ fun DashboardScreen(
     appPreferences: AppPreferences,
     darkTheme: Boolean = false,
     onToggleDarkMode: () -> Unit = {},
+    currentSeedColor: androidx.compose.ui.graphics.Color? = null,
+    onThemeChange: (androidx.compose.ui.graphics.Color) -> Unit = {},
     onLogout: () -> Unit = {},
 ) {
     var connectionStatus by remember { mutableStateOf<ConnectionStatus>(ConnectionStatus.Checking) }
@@ -161,6 +163,8 @@ fun DashboardScreen(
                 appPreferences.defaultDashboardKey = key
                 defaultDashboardKey = key
             },
+            currentSeedColor = currentSeedColor,
+            onThemeChange = onThemeChange,
             modifier = Modifier.fillMaxSize(),
         )
     }

@@ -74,17 +74,20 @@ fun DashboardHeader(
         ?: items.firstOrNull()?.title
         ?: "Dashboards"
 
+    val primary = MaterialTheme.colorScheme.primary
+    val primaryContainer = MaterialTheme.colorScheme.primaryContainer
+    val surface = MaterialTheme.colorScheme.surface
     val gradientColors = if (darkTheme) {
         arrayOf(
-            0.0f to Color(0xFF3A0080),
-            0.6f to Color(0xFF1A0040),
-            1.0f to Color(0xFF080010),
+            0.0f to primaryContainer,
+            0.6f to surface,
+            1.0f to surface,
         )
     } else {
         arrayOf(
-            0.0f to Color(0xFF7C3AED),
-            0.6f to Color(0xFF6D28D9),
-            1.0f to Color(0xFF5B21B6),
+            0.0f to primary,
+            0.6f to primary,
+            1.0f to primary,
         )
     }
 
@@ -120,7 +123,7 @@ fun DashboardHeader(
             }
             Box {
                 var menuExpanded by remember { mutableStateOf(false) }
-                val menuContainerColor = if (darkTheme) Color(0xFF200050) else Color(0xFF6D28D9)
+                val menuContainerColor = if (darkTheme) primaryContainer else primary
                 val menuIconTint = Color.White.copy(alpha = 0.85f)
                 val itemPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
                 IconButton(

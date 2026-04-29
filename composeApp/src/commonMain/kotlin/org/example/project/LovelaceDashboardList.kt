@@ -53,6 +53,8 @@ fun LovelaceDashboardList(
     onLogout: () -> Unit,
     defaultDashboardKey: String? = null,
     onSaveDefaultDashboard: (String?) -> Unit = {},
+    currentSeedColor: androidx.compose.ui.graphics.Color? = null,
+    onThemeChange: (androidx.compose.ui.graphics.Color) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val entries = remember(dashboards, configs, errors) {
@@ -158,10 +160,12 @@ fun LovelaceDashboardList(
         SettingsDialog(
             items = items,
             currentDefaultKey = defaultDashboardKey,
+            currentSeedColor = currentSeedColor,
             onSave = { key ->
                 onSaveDefaultDashboard(key)
                 showSettings = false
             },
+            onThemeChange = onThemeChange,
             onDismiss = { showSettings = false },
         )
     }

@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -33,6 +34,17 @@ import org.example.project.auth.createHttpClient
 import org.example.project.auth.createSettings
 import androidx.compose.runtime.CompositionLocalProvider
 
+private fun colorToRgbInt(color: Color): Int =
+    ((color.red * 255 + 0.5f).toInt() shl 16) or
+    ((color.green * 255 + 0.5f).toInt() shl 8) or
+    (color.blue * 255 + 0.5f).toInt()
+
+private fun colorFromRgbInt(rgb: Int): Color = Color(
+    red   = ((rgb ushr 16) and 0xFF) / 255f,
+    green = ((rgb ushr 8) and 0xFF) / 255f,
+    blue  = (rgb and 0xFF) / 255f,
+)
+
 private val navConfig = SavedStateConfiguration {
     serializersModule = SerializersModule {
         polymorphic(NavKey::class) {
@@ -51,6 +63,7 @@ fun App() {
     val settings = remember { createSettings() }
     val tokenStorage = remember { TokenStorage(settings) }
     val appPreferences = remember { AppPreferences(settings) }
+    var themeSeedColor by remember { mutableStateOf(appPreferences.themeSeedColor?.let { colorFromRgbInt(it) }) }
     val httpClient = remember { createHttpClient() }
     val haClient = remember { HomeAssistantClient(httpClient) }
     val haWsClient = remember { HomeAssistantWebSocketClient(httpClient) }
@@ -65,7 +78,7 @@ fun App() {
 
     val startRoute = remember { if (tokenStorage.load() != null) Dashboard else Login }
 
-    AppTheme(darkTheme = darkTheme) {
+    AppTheme(darkTheme = darkTheme, seedColor = themeSeedColor) {
         val backStack = rememberNavBackStack(navConfig, startRoute)
 
         NavDisplay(
@@ -110,6 +123,11 @@ fun App() {
                                 appPreferences = appPreferences,
                                 darkTheme = darkTheme,
                                 onToggleDarkMode = { darkTheme = !darkTheme },
+                                currentSeedColor = themeSeedColor,
+                                onThemeChange = { color ->
+                                    themeSeedColor = color
+                                    appPreferences.themeSeedColor = colorToRgbInt(color)
+                                },
                                 onLogout = {
                                     tokenStorage.clear()
                                     backStack.clear()
