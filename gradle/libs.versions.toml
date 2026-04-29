@@ -12,6 +12,7 @@ androidx-testExt = "1.3.0"
 coil = "3.4.0"
 composeHotReload = "1.2.0-alpha.mcp+201"
 composeMultiplatform = "1.11.0-beta03"
+jbrApi = "1.5.0"
 junit = "4.13.2"
 kotlin = "2.3.21"
 kotlinx-coroutines = "1.10.2"
@@ -63,6 +64,7 @@ multiplatform-settings = { module = "com.russhwolf:multiplatform-settings", vers
 multiplatform-settings-coroutines = { module = "com.russhwolf:multiplatform-settings-coroutines", version.ref = "multiplatformSettings" }
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
+jbr-api = { module = "com.jetbrains:jbr-api", version.ref = "jbrApi" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

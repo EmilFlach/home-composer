@@ -1,5 +1,8 @@
 package org.example.project
 
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
@@ -17,6 +20,16 @@ fun main() = application {
             height = 1000.dp
         )
     ) {
-        App()
+        // JBR macOS: leftInset = titleBarHeight + 2*shrinkingFactor*20.
+        // Use the standard macOS height (28) so leftInset is just enough to clear
+        // the traffic lights (~68dp) without excess horizontal padding.
+        val titleBarInsets = rememberJbrTitleBarInsets(headerHeightDp = 28f)
+        val dragModifier = remember(window) { Modifier.dragWindowOnDrag(window) }
+        CompositionLocalProvider(
+            LocalWindowDecorationInsets provides titleBarInsets,
+            LocalHeaderDragModifier provides dragModifier,
+        ) {
+            App()
+        }
     }
 }
