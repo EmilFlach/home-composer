@@ -211,12 +211,12 @@ private fun DashboardDropdown(
     val enabled = items.isNotEmpty()
     Box(modifier = modifier) {
         Surface(
+            onClick = { expanded = true },
+            enabled = enabled,
             shape = RoundedCornerShape(20.dp),
             color = Color.White.copy(alpha = if (enabled) 0.18f else 0.10f),
             contentColor = Color.White,
-            modifier = Modifier
-                .widthIn(min = 120.dp)
-                .clickable(enabled = enabled) { expanded = true },
+            modifier = Modifier.widthIn(min = 120.dp),
         ) {
             Row(
                 modifier = Modifier.padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
