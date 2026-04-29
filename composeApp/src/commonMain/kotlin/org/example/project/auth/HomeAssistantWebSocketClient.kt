@@ -4,6 +4,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.websocket.Frame
 import io.ktor.websocket.readText
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -17,16 +18,24 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Instant
 
 class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
     private val json = Json { ignoreUnknownKeys = true }
@@ -82,6 +91,21 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
         }
     }
 
+    private data class HistoryRequest(
+        val entityIds: List<String>,
+        val hoursToShow: Int,
+        val deferred: CompletableDeferred<List<HaHistorySeries>>,
+    )
+
+    private val _historyChannel = Channel<HistoryRequest>(Channel.UNLIMITED)
+
+    suspend fun fetchHistory(entityIds: List<String>, hoursToShow: Int): List<HaHistorySeries> {
+        if (entityIds.isEmpty() || hoursToShow <= 0) return emptyList()
+        val deferred = CompletableDeferred<List<HaHistorySeries>>()
+        _historyChannel.trySend(HistoryRequest(entityIds, hoursToShow, deferred))
+        return withTimeoutOrNull(15_000.milliseconds) { deferred.await() } ?: emptyList()
+    }
+
     suspend fun connect(config: HomeAssistantConfig) {
         var nextId = 1L
         val pendingRequests = mutableMapOf<Long, PendingRequest>()
@@ -89,6 +113,7 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
         try {
         httpClient.webSocket(config.baseUrl.toWebSocketUrl()) {
             var sendJob: Job? = null
+            var historyJob: Job? = null
             for (frame in incoming) {
                 if (frame !is Frame.Text) continue
                 val text = frame.readText()
@@ -106,6 +131,24 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
                     "auth_ok" -> {
                         sendJob = launch {
                             for (msg in _serviceCallChannel) send(Frame.Text(msg))
+                        }
+                        historyJob = launch {
+                            for (req in _historyChannel) {
+                                if (req.deferred.isCompleted) continue
+                                val id = nextId++
+                                pendingRequests[id] = PendingRequest.HistoryQuery(req.deferred)
+                                val now = Clock.System.now()
+                                val start: Instant = now - req.hoursToShow.hours
+                                val entityIdsJson = req.entityIds.joinToString(",") { "\"$it\"" }
+                                send(
+                                    Frame.Text(
+                                        """{"id":$id,"type":"history/history_during_period",""" +
+                                            """"start_time":"$start","end_time":"$now",""" +
+                                            """"entity_ids":[$entityIdsJson],""" +
+                                            """"minimal_response":true,"no_attributes":true,"significant_changes_only":true}""",
+                                    ),
+                                )
+                            }
                         }
 
                         val listId = nextId++
@@ -138,6 +181,9 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
                                 ?: "Request failed"
                             if (request is PendingRequest.DashboardConfig) {
                                 _dashboardErrors.value = _dashboardErrors.value + (request.key to errMessage)
+                            }
+                            if (request is PendingRequest.HistoryQuery) {
+                                request.deferred.complete(emptyList())
                             }
                             continue
                         }
@@ -179,6 +225,10 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
                             }
 
                             PendingRequest.SubscribeEvents -> Unit
+
+                            is PendingRequest.HistoryQuery -> {
+                                request.deferred.complete(parseHistoryResult(result))
+                            }
                         }
                     }
 
@@ -204,6 +254,12 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
                 }
             }
             sendJob?.cancel()
+            historyJob?.cancel()
+            for ((_, pending) in pendingRequests) {
+                if (pending is PendingRequest.HistoryQuery && !pending.deferred.isCompleted) {
+                    pending.deferred.complete(emptyList())
+                }
+            }
         }
         } catch (_: Exception) { }
     }
@@ -213,7 +269,35 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
         data class DashboardConfig(val key: String) : PendingRequest
         data object GetStates : PendingRequest
         data object SubscribeEvents : PendingRequest
+        data class HistoryQuery(val deferred: CompletableDeferred<List<HaHistorySeries>>) : PendingRequest
     }
+}
+
+private fun parseHistoryResult(result: JsonElement): List<HaHistorySeries> {
+    val obj = result as? JsonObject ?: return emptyList()
+    return obj.entries.map { (entityId, value) ->
+        val arr = value as? JsonArray ?: return@map HaHistorySeries(entityId, emptyList())
+        val points = arr.mapNotNull { item ->
+            val o = item as? JsonObject ?: return@mapNotNull null
+            val state = (o["state"] as? JsonPrimitive)?.contentOrNull
+                ?: (o["s"] as? JsonPrimitive)?.contentOrNull
+                ?: return@mapNotNull null
+            val timeMs = parseHistoryTimestamp(o) ?: return@mapNotNull null
+            HaHistoryPoint(timeMs, state)
+        }
+        HaHistorySeries(entityId, points)
+    }
+}
+
+private fun parseHistoryTimestamp(o: JsonObject): Long? {
+    val isoStr = (o["last_changed"] as? JsonPrimitive)?.contentOrNull
+        ?: (o["last_updated"] as? JsonPrimitive)?.contentOrNull
+    if (isoStr != null) {
+        return runCatching { Instant.parse(isoStr).toEpochMilliseconds() }.getOrNull()
+    }
+    val epochSec = (o["lc"] as? JsonPrimitive)?.doubleOrNull
+        ?: (o["lu"] as? JsonPrimitive)?.doubleOrNull
+    return epochSec?.let { (it * 1000).toLong() }
 }
 
 private fun String.toWebSocketUrl(): String {

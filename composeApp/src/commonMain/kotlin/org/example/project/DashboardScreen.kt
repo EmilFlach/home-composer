@@ -56,6 +56,7 @@ import kotlinx.coroutines.isActive
 import org.example.project.auth.HomeAssistantWebSocketClient
 import org.example.project.cards.HaAction
 import org.example.project.cards.LocalHaActionHandler
+import org.example.project.cards.LocalHaHistoryProvider
 import kotlin.time.Duration.Companion.milliseconds
 
 private const val CONNECTION_POLL_INTERVAL_MS = 30_000L
@@ -135,7 +136,10 @@ fun DashboardScreen(
                 is HaAction.Navigate -> Unit
                 is HaAction.MoreInfo -> Unit
             }
-        }
+        },
+        LocalHaHistoryProvider provides { entityIds, hours ->
+            wsClient.fetchHistory(entityIds, hours)
+        },
     ) {
         LovelaceDashboardList(
             dashboards = dashboards,
