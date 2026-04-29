@@ -28,6 +28,9 @@ dependencyResolutionManagement {
         }
         mavenCentral()
         maven("https://packages.jetbrains.team/maven/p/firework/dev")
+        maven("https://packages.jetbrains.team/maven/p/ij/intellij-dependencies/") {
+            mavenContent { includeGroup("com.jetbrains") }
+        }
     }
 }
 
