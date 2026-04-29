@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -35,11 +36,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import org.example.project.auth.ConnectionStatus
 
 data class DashboardSelectorItem(
     val key: String,
@@ -51,6 +56,7 @@ fun DashboardHeader(
     items: List<DashboardSelectorItem>,
     selectedKey: String?,
     onSelectDashboard: (String) -> Unit,
+    connectionStatus: ConnectionStatus,
     darkTheme: Boolean,
     onToggleDarkMode: () -> Unit,
     onLogout: () -> Unit,
@@ -89,13 +95,20 @@ fun DashboardHeader(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            DashboardDropdown(
-                title = selectedTitle,
-                items = items,
-                selectedKey = selectedKey,
-                onSelect = onSelectDashboard,
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.weight(1f, fill = false),
-            )
+            ) {
+                DashboardDropdown(
+                    title = selectedTitle,
+                    items = items,
+                    selectedKey = selectedKey,
+                    onSelect = onSelectDashboard,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                ConnectionStatusDot(connectionStatus)
+            }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(0.dp),
@@ -125,6 +138,22 @@ fun DashboardHeader(
             }
         }
     }
+}
+
+@Composable
+private fun ConnectionStatusDot(status: ConnectionStatus) {
+    val (color, label) = when (status) {
+        ConnectionStatus.Checking -> Color(0xFFFFC107) to "Checking connection"
+        ConnectionStatus.Connected -> Color(0xFF4CAF50) to "Connected"
+        is ConnectionStatus.Disconnected -> Color(0xFFF44336) to "Disconnected: ${status.message}"
+    }
+    Box(
+        modifier = Modifier
+            .size(10.dp)
+            .clip(CircleShape)
+            .background(color)
+            .semantics { contentDescription = label },
+    )
 }
 
 @Composable

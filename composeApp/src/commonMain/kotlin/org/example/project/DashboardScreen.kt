@@ -2,7 +2,6 @@ package org.example.project
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -62,7 +61,7 @@ fun DashboardScreen(
     onLogout: () -> Unit = {},
 ) {
     var connectionStatus by remember { mutableStateOf<ConnectionStatus>(ConnectionStatus.Checking) }
-    LaunchedEffect(config) {
+    LaunchedEffect(client, config) {
         while (true) {
             connectionStatus = ConnectionStatus.Checking
             client.verify(config)
@@ -76,8 +75,6 @@ fun DashboardScreen(
     LaunchedEffect(wsClient, config) {
         runCatching { wsClient.connect(config) }
     }
-    val frameCount by wsClient.frameCount.collectAsStateWithLifecycle()
-    val latestFrame by wsClient.latestFrame.collectAsStateWithLifecycle()
     val dashboards by wsClient.dashboards.collectAsStateWithLifecycle()
     val dashboardConfigs by wsClient.dashboardConfigs.collectAsStateWithLifecycle()
     val dashboardErrors by wsClient.dashboardErrors.collectAsStateWithLifecycle()
@@ -117,24 +114,17 @@ fun DashboardScreen(
             }
         }
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            LovelaceDashboardList(
-                dashboards = dashboards,
-                configs = dashboardConfigs,
-                errors = dashboardErrors,
-                entityStates = entityStates,
-                darkTheme = darkTheme,
-                onToggleDarkMode = onToggleDarkMode,
-                onLogout = onLogout,
-                modifier = Modifier.weight(1f),
-            )
-            ConnectionStatusBar(
-                status = connectionStatus,
-                baseUrl = config.baseUrl,
-                frameCount = frameCount,
-                latestFrame = latestFrame,
-            )
-        }
+        LovelaceDashboardList(
+            dashboards = dashboards,
+            configs = dashboardConfigs,
+            errors = dashboardErrors,
+            entityStates = entityStates,
+            connectionStatus = connectionStatus,
+            darkTheme = darkTheme,
+            onToggleDarkMode = onToggleDarkMode,
+            onLogout = onLogout,
+            modifier = Modifier.fillMaxSize(),
+        )
     }
 }
 

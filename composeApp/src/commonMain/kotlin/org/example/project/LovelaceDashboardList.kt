@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import org.example.project.auth.ConnectionStatus
 import org.example.project.auth.DEFAULT_DASHBOARD_KEY
 import org.example.project.auth.HaEntityState
 import org.example.project.auth.LovelaceConfig
@@ -38,6 +39,7 @@ fun LovelaceDashboardList(
     configs: Map<String, LovelaceConfig>,
     errors: Map<String, String>,
     entityStates: Map<String, HaEntityState>,
+    connectionStatus: ConnectionStatus,
     darkTheme: Boolean,
     onToggleDarkMode: () -> Unit,
     onLogout: () -> Unit,
@@ -72,6 +74,7 @@ fun LovelaceDashboardList(
             items = items,
             selectedKey = effectiveSelectedKey,
             onSelectDashboard = { selectedKey = it },
+            connectionStatus = connectionStatus,
             darkTheme = darkTheme,
             onToggleDarkMode = onToggleDarkMode,
             onLogout = onLogout,
