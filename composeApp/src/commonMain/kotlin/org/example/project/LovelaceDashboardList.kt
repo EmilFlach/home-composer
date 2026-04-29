@@ -113,7 +113,7 @@ fun LovelaceDashboardList(
                 defaultDashboardKey = defaultDashboardKey,
             )
 
-            if (views.isNotEmpty()) {
+            if (views.size > 1) {
                 ViewTabs(
                     views = views,
                     selectedIndex = safeViewIndex,
