@@ -49,7 +49,7 @@ internal fun HeadingCard(
     val raw = config.raw
     val text = stringField(raw, "heading")
         ?: config.title
-        ?: config.name
+        ?: config.nameText
     val style = stringField(raw, "heading_style")?.lowercase() ?: "title"
     val isSubtitle = style == "subtitle"
     val icon = stringField(raw, "icon")

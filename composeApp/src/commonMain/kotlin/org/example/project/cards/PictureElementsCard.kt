@@ -73,7 +73,7 @@ internal fun PictureElementsCard(
     val imageUrl = stateImage ?: explicitImage ?: imageEntityPicture ?: cameraImage
 
     val explicitAspectRatio = stringField(raw, "aspect_ratio")?.let(::parseAspectRatio)
-    val altText = stringField(raw, "alt_text") ?: config.title ?: config.name
+    val altText = stringField(raw, "alt_text") ?: config.title ?: config.nameText
 
     val elements = parseElements(raw)
 

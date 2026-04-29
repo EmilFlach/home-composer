@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import org.example.project.cards.HaRegistry
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
@@ -82,6 +83,54 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
         _rawEntityStates, _optimisticStates
     ) { raw, optimistic -> raw + optimistic }
         .stateIn(clientScope, SharingStarted.Eagerly, emptyMap())
+
+    // area_id -> area_name
+    private val _areas = MutableStateFlow<Map<String, String>>(emptyMap())
+    // entity_id -> area_id
+    private val _entityAreaIds = MutableStateFlow<Map<String, String>>(emptyMap())
+    // entity_id -> registry name (may be null for unnamed entities)
+    private val _entityNames = MutableStateFlow<Map<String, String>>(emptyMap())
+    // device_id -> display_name
+    private val _deviceNames = MutableStateFlow<Map<String, String>>(emptyMap())
+    // device_id -> area_id (devices can have their own area assignment)
+    private val _deviceAreaIds = MutableStateFlow<Map<String, String>>(emptyMap())
+    // entity_id -> device_id
+    private val _entityDeviceIds = MutableStateFlow<Map<String, String>>(emptyMap())
+    // floor_id -> floor_name
+    private val _floors = MutableStateFlow<Map<String, String>>(emptyMap())
+    // area_id -> floor_id
+    private val _areaFloorIds = MutableStateFlow<Map<String, String>>(emptyMap())
+
+    private data class RegistryPart1(
+        val areas: Map<String, String>,
+        val entityAreaIds: Map<String, String>,
+        val entityNames: Map<String, String>,
+    )
+    private data class RegistryPart2(
+        val deviceNames: Map<String, String>,
+        val deviceAreaIds: Map<String, String>,
+        val entityDeviceIds: Map<String, String>,
+        val floors: Map<String, String>,
+        val areaFloorIds: Map<String, String>,
+    )
+
+    val haRegistry: StateFlow<HaRegistry> = combine(
+        combine(_areas, _entityAreaIds, _entityNames) { a, b, c -> RegistryPart1(a, b, c) },
+        combine(_deviceNames, _deviceAreaIds, _entityDeviceIds, _floors, _areaFloorIds) { d, e, f, g, h ->
+            RegistryPart2(d, e, f, g, h)
+        },
+    ) { p1, p2 ->
+        HaRegistry(
+            areas = p1.areas,
+            entityAreaIds = p1.entityAreaIds,
+            entityNames = p1.entityNames,
+            deviceNames = p2.deviceNames,
+            deviceAreaIds = p2.deviceAreaIds,
+            entityDeviceIds = p2.entityDeviceIds,
+            floors = p2.floors,
+            areaFloorIds = p2.areaFloorIds,
+        )
+    }.stateIn(clientScope, SharingStarted.Eagerly, HaRegistry())
 
     fun setOptimisticState(entityId: String, state: HaEntityState) {
         _optimisticStates.value = _optimisticStates.value + (entityId to state)
@@ -166,6 +215,22 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
                         val subId = nextId++
                         pendingRequests[subId] = PendingRequest.SubscribeEvents
                         send(Frame.Text("""{"id":$subId,"type":"subscribe_events","event_type":"state_changed"}"""))
+
+                        val areaId = nextId++
+                        pendingRequests[areaId] = PendingRequest.GetAreaRegistry
+                        send(Frame.Text("""{"id":$areaId,"type":"config/area_registry/list"}"""))
+
+                        val entityRegId = nextId++
+                        pendingRequests[entityRegId] = PendingRequest.GetEntityRegistry
+                        send(Frame.Text("""{"id":$entityRegId,"type":"config/entity_registry/list"}"""))
+
+                        val deviceId = nextId++
+                        pendingRequests[deviceId] = PendingRequest.GetDeviceRegistry
+                        send(Frame.Text("""{"id":$deviceId,"type":"config/device_registry/list"}"""))
+
+                        val floorId = nextId++
+                        pendingRequests[floorId] = PendingRequest.GetFloorRegistry
+                        send(Frame.Text("""{"id":$floorId,"type":"config/floor_registry/list"}"""))
                     }
 
                     "auth_invalid" -> error("Authentication failed")
@@ -229,6 +294,97 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
                             is PendingRequest.HistoryQuery -> {
                                 request.deferred.complete(parseHistoryResult(result))
                             }
+
+                            PendingRequest.GetAreaRegistry -> {
+                                val arr = result as? JsonArray ?: continue
+                                val areaNames = buildMap<String, String> {
+                                    for (item in arr) {
+                                        val o = item as? JsonObject ?: continue
+                                        val id = (o["area_id"] as? JsonPrimitive)?.contentOrNull ?: continue
+                                        val name = (o["name"] as? JsonPrimitive)?.contentOrNull ?: continue
+                                        put(id, name)
+                                    }
+                                }
+                                val floorIds = buildMap<String, String> {
+                                    for (item in arr) {
+                                        val o = item as? JsonObject ?: continue
+                                        val id = (o["area_id"] as? JsonPrimitive)?.contentOrNull ?: continue
+                                        val floorId = (o["floor_id"] as? JsonPrimitive)?.contentOrNull ?: continue
+                                        put(id, floorId)
+                                    }
+                                }
+                                _areas.value = areaNames
+                                _areaFloorIds.value = floorIds
+                            }
+
+                            PendingRequest.GetEntityRegistry -> {
+                                val arr = result as? JsonArray ?: continue
+                                val areaIds = buildMap<String, String> {
+                                    for (item in arr) {
+                                        val o = item as? JsonObject ?: continue
+                                        val entityId = (o["entity_id"] as? JsonPrimitive)?.contentOrNull ?: continue
+                                        val areaId = (o["area_id"] as? JsonPrimitive)?.contentOrNull ?: continue
+                                        put(entityId, areaId)
+                                    }
+                                }
+                                val deviceIds = buildMap<String, String> {
+                                    for (item in arr) {
+                                        val o = item as? JsonObject ?: continue
+                                        val entityId = (o["entity_id"] as? JsonPrimitive)?.contentOrNull ?: continue
+                                        val deviceId = (o["device_id"] as? JsonPrimitive)?.contentOrNull ?: continue
+                                        put(entityId, deviceId)
+                                    }
+                                }
+                                val names = buildMap<String, String> {
+                                    for (item in arr) {
+                                        val o = item as? JsonObject ?: continue
+                                        val entityId = (o["entity_id"] as? JsonPrimitive)?.contentOrNull ?: continue
+                                        val name = (o["name"] as? JsonPrimitive)?.contentOrNull
+                                            ?: (o["original_name"] as? JsonPrimitive)?.contentOrNull
+                                            ?: continue
+                                        put(entityId, name)
+                                    }
+                                }
+                                _entityAreaIds.value = areaIds
+                                _entityDeviceIds.value = deviceIds
+                                _entityNames.value = names
+                            }
+
+                            PendingRequest.GetDeviceRegistry -> {
+                                val arr = result as? JsonArray ?: continue
+                                val names = buildMap<String, String> {
+                                    for (item in arr) {
+                                        val o = item as? JsonObject ?: continue
+                                        val id = (o["id"] as? JsonPrimitive)?.contentOrNull ?: continue
+                                        val name = (o["name_by_user"] as? JsonPrimitive)?.contentOrNull
+                                            ?: (o["name"] as? JsonPrimitive)?.contentOrNull
+                                            ?: continue
+                                        put(id, name)
+                                    }
+                                }
+                                val areaIds = buildMap<String, String> {
+                                    for (item in arr) {
+                                        val o = item as? JsonObject ?: continue
+                                        val id = (o["id"] as? JsonPrimitive)?.contentOrNull ?: continue
+                                        val areaId = (o["area_id"] as? JsonPrimitive)?.contentOrNull ?: continue
+                                        put(id, areaId)
+                                    }
+                                }
+                                _deviceNames.value = names
+                                _deviceAreaIds.value = areaIds
+                            }
+
+                            PendingRequest.GetFloorRegistry -> {
+                                val arr = result as? JsonArray ?: continue
+                                _floors.value = buildMap {
+                                    for (item in arr) {
+                                        val o = item as? JsonObject ?: continue
+                                        val id = (o["floor_id"] as? JsonPrimitive)?.contentOrNull ?: continue
+                                        val name = (o["name"] as? JsonPrimitive)?.contentOrNull ?: continue
+                                        put(id, name)
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -270,6 +426,10 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
         data object GetStates : PendingRequest
         data object SubscribeEvents : PendingRequest
         data class HistoryQuery(val deferred: CompletableDeferred<List<HaHistorySeries>>) : PendingRequest
+        data object GetAreaRegistry : PendingRequest
+        data object GetEntityRegistry : PendingRequest
+        data object GetDeviceRegistry : PendingRequest
+        data object GetFloorRegistry : PendingRequest
     }
 }
 

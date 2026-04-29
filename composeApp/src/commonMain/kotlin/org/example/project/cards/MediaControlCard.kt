@@ -76,7 +76,7 @@ internal fun MediaControlCard(
     val isPlaying = rawState == "playing"
     val isOff = rawState == "off" || rawState == "unavailable"
 
-    val displayName = config.name ?: state?.friendlyName ?: entityId
+    val displayName = config.nameText ?: state?.friendlyName ?: entityId
 
     val handler = LocalHaActionHandler.current
     fun call(service: String, data: JsonObject? = null) {

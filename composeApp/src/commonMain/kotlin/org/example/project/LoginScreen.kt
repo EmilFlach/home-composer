@@ -271,7 +271,7 @@ private fun ShowcaseLabel(text: String) {
 }
 
 private fun showcaseCardConfig(type: String, entityId: String) = LovelaceCardConfig(
-    type = type, title = null, name = null, icon = null,
+    type = type, title = null, nameConfig = null, icon = null,
     entity = entityId, entities = emptyList(), cardCount = 0, raw = null,
 )
 

@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -71,23 +72,32 @@ fun LovelaceCard(
     }
 }
 
+internal sealed class CardNameConfig {
+    data class Static(val text: String) : CardNameConfig()
+    data class Typed(val parts: List<NamePart>) : CardNameConfig()
+
+    data class NamePart(val type: String, val text: String? = null)
+}
+
 internal data class LovelaceCardConfig(
     val type: String?,
     val title: String?,
-    val name: String?,
+    val nameConfig: CardNameConfig?,
     val icon: String?,
     val entity: String?,
     val entities: List<String>,
     val cardCount: Int,
     val raw: JsonObject?,
-)
+) {
+    val nameText: String? get() = (nameConfig as? CardNameConfig.Static)?.text
+}
 
 internal fun JsonElement.toCardConfig(): LovelaceCardConfig {
     val obj = this as? JsonObject
         ?: return LovelaceCardConfig(null, null, null, null, null, emptyList(), 0, null)
     val type = (obj["type"] as? JsonPrimitive)?.contentOrNull
     val title = (obj["title"] as? JsonPrimitive)?.contentOrNull
-    val name = (obj["name"] as? JsonPrimitive)?.contentOrNull
+    val nameConfig = parseNameConfig(obj["name"])
     val icon = (obj["icon"] as? JsonPrimitive)?.contentOrNull
     val entity = (obj["entity"] as? JsonPrimitive)?.contentOrNull
     val entities = (obj["entities"] as? JsonArray)?.mapNotNull { e ->
@@ -101,13 +111,34 @@ internal fun JsonElement.toCardConfig(): LovelaceCardConfig {
     return LovelaceCardConfig(
         type = type,
         title = title,
-        name = name,
+        nameConfig = nameConfig,
         icon = icon,
         entity = entity,
         entities = entities,
         cardCount = nested,
         raw = obj,
     )
+}
+
+private fun parseNameConfig(element: JsonElement?): CardNameConfig? {
+    return when (element) {
+        null, is JsonNull -> null
+        is JsonPrimitive -> element.contentOrNull?.let { CardNameConfig.Static(it) }
+        is JsonObject -> {
+            val type = (element["type"] as? JsonPrimitive)?.contentOrNull ?: return null
+            val text = (element["text"] as? JsonPrimitive)?.contentOrNull
+            CardNameConfig.Typed(listOf(CardNameConfig.NamePart(type, text)))
+        }
+        is JsonArray -> {
+            val parts = element.mapNotNull { item ->
+                val o = item as? JsonObject ?: return@mapNotNull null
+                val type = (o["type"] as? JsonPrimitive)?.contentOrNull ?: return@mapNotNull null
+                val text = (o["text"] as? JsonPrimitive)?.contentOrNull
+                CardNameConfig.NamePart(type, text)
+            }
+            if (parts.isEmpty()) null else CardNameConfig.Typed(parts)
+        }
+    }
 }
 
 @Composable
@@ -132,7 +163,7 @@ internal fun StubScaffold(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 TypePill(text = config.type ?: "card")
-                val heading = config.title ?: config.name
+                val heading = config.title ?: config.nameText
                 if (heading != null) {
                     Text(
                         text = heading,

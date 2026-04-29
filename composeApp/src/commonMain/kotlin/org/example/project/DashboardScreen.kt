@@ -57,6 +57,7 @@ import org.example.project.auth.HomeAssistantWebSocketClient
 import org.example.project.cards.HaAction
 import org.example.project.cards.LocalHaActionHandler
 import org.example.project.cards.LocalHaHistoryProvider
+import org.example.project.cards.LocalHaRegistry
 import kotlin.time.Duration.Companion.milliseconds
 
 private const val CONNECTION_POLL_INTERVAL_MS = 30_000L
@@ -103,6 +104,7 @@ fun DashboardScreen(
     val dashboardConfigs by wsClient.dashboardConfigs.collectAsStateWithLifecycle()
     val dashboardErrors by wsClient.dashboardErrors.collectAsStateWithLifecycle()
     val entityStates by wsClient.entityStates.collectAsStateWithLifecycle()
+    val haRegistry by wsClient.haRegistry.collectAsStateWithLifecycle()
     val uriHandler = LocalUriHandler.current
     CompositionLocalProvider(
         LocalHaActionHandler provides { action, contextEntity ->
@@ -140,6 +142,7 @@ fun DashboardScreen(
         LocalHaHistoryProvider provides { entityIds, hours ->
             wsClient.fetchHistory(entityIds, hours)
         },
+        LocalHaRegistry provides haRegistry,
     ) {
         LovelaceDashboardList(
             dashboards = dashboards,

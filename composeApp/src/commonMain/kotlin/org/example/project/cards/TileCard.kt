@@ -85,7 +85,9 @@ internal fun TileCard(
     val entityId = config.entity
     val state = entityId?.let(entityStates::get)
 
-    val displayName = config.name
+    val registry = LocalHaRegistry.current
+    val displayName = config.nameConfig
+        ?.let { registry.resolveNameConfig(it, entityId, state?.friendlyName) }
         ?: state?.friendlyName
         ?: entityId
         ?: "Unknown"

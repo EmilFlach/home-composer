@@ -27,7 +27,7 @@ internal fun PictureEntityCard(
     val showState = boolField(raw, "show_state", default = true)
 
     val displayName = if (showName) {
-        config.name ?: state?.friendlyName ?: entityId
+        config.nameText ?: state?.friendlyName ?: entityId
     } else null
 
     val displayState = if (showState && state != null) {

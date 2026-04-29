@@ -29,7 +29,7 @@ internal fun SensorCard(
     val entityId = config.entity
     val state: HaEntityState? = entityId?.let { entityStates[it] }
 
-    val displayName = config.name
+    val displayName = config.nameText
         ?: config.title
         ?: state?.friendlyName
         ?: entityId

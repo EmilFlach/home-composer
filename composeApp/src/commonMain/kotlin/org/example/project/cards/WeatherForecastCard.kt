@@ -83,7 +83,7 @@ private fun WeatherCardContent(
     val low = (todayForecast?.get("templow") as? JsonPrimitive)?.floatOrNull
     val avgTemp = if (high != null && low != null) (high + low) / 2f else currentTemp
 
-    val displayName = config.name ?: config.title ?: entityState.friendlyName ?: entityId
+    val displayName = config.nameText ?: config.title ?: entityState.friendlyName ?: entityId
 
     Row(
         modifier = Modifier.fillMaxWidth().padding(16.dp),

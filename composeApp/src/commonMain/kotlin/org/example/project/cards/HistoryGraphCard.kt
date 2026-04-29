@@ -64,7 +64,7 @@ internal fun HistoryGraphCard(
     val raw = config.raw
     val hoursToShow = (raw?.get("hours_to_show") as? JsonPrimitive)?.intOrNull?.coerceAtLeast(1) ?: 24
     val refreshIntervalSeconds = (raw?.get("refresh_interval") as? JsonPrimitive)?.intOrNull ?: 0
-    val title = config.title ?: config.name
+    val title = config.title ?: config.nameText
 
     val provider = LocalHaHistoryProvider.current
     val entityKey = config.entities.joinToString(",")
