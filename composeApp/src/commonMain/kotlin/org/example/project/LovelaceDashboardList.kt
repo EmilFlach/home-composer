@@ -1,8 +1,10 @@
 package org.example.project
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -305,12 +307,18 @@ private fun LazyView(
             }
         } else {
             sections.forEachIndexed { sectionIndex, section ->
-                if (!evaluateVisibility(parseVisibility(section.visibility), entityStates)) return@forEachIndexed
-                items(section.cards.size, key = { "section-$sectionIndex-card-$it" }) { cardIndex ->
-                    LovelaceCard(card = section.cards[cardIndex], entityStates = entityStates)
-                }
-                item(key = "section-$sectionIndex-spacer") {
-                    Spacer(Modifier.height(12.dp))
+                val isVisible = evaluateVisibility(parseVisibility(section.visibility), entityStates)
+                item(key = "section-$sectionIndex") {
+                    AnimatedVisibility(
+                        visible = isVisible,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically(),
+                    ) {
+                        Column {
+                            SectionContent(section = section, entityStates = entityStates)
+                            Spacer(Modifier.height(12.dp))
+                        }
+                    }
                 }
             }
         }
@@ -324,10 +332,7 @@ private fun SectionsGrid(
     maxColumns: Int,
     modifier: Modifier = Modifier,
 ) {
-    val visibleSections = sections.filter {
-        evaluateVisibility(parseVisibility(it.visibility), entityStates)
-    }
-    if (visibleSections.isEmpty()) return
+    if (sections.isEmpty()) return
 
     BoxWithConstraints(
         modifier = modifier.fillMaxWidth(),
@@ -347,8 +352,15 @@ private fun SectionsGrid(
                 modifier = Modifier.widthIn(max = maxContentWidth).fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                visibleSections.forEach { section ->
-                    SectionContent(section = section, entityStates = entityStates)
+                sections.forEach { section ->
+                    val isVisible = evaluateVisibility(parseVisibility(section.visibility), entityStates)
+                    AnimatedVisibility(
+                        visible = isVisible,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically(),
+                    ) {
+                        SectionContent(section = section, entityStates = entityStates)
+                    }
                 }
             }
         } else {
@@ -362,10 +374,17 @@ private fun SectionsGrid(
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        visibleSections
+                        sections
                             .filterIndexed { idx, _ -> idx % effectiveCols == colIndex }
                             .forEach { section ->
-                                SectionContent(section = section, entityStates = entityStates)
+                                val isVisible = evaluateVisibility(parseVisibility(section.visibility), entityStates)
+                                AnimatedVisibility(
+                                    visible = isVisible,
+                                    enter = fadeIn(),
+                                    exit = fadeOut(),
+                                ) {
+                                    SectionContent(section = section, entityStates = entityStates)
+                                }
                             }
                     }
                 }

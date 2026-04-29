@@ -1,5 +1,10 @@
 package org.example.project.cards
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,11 +42,16 @@ fun LovelaceCard(
 ) {
     val config = card.toCardConfig()
     val visibility = parseVisibility(config.raw?.get("visibility"))
-    if (!evaluateVisibility(visibility, entityStates)) return
+    val isVisible = evaluateVisibility(visibility, entityStates)
+    AnimatedVisibility(
+        visible = isVisible,
+        enter = fadeIn() + expandVertically(),
+        exit = fadeOut() + shrinkVertically(),
+    ) {
     val entityStatesLoaded = LocalEntityStatesLoaded.current
     if (!entityStatesLoaded && (config.entity != null || config.entities.isNotEmpty())) {
         SkeletonCard(modifier)
-        return
+        return@AnimatedVisibility
     }
     when (config.type) {
         "sensor" -> SensorCard(config, entityStates, modifier)
@@ -79,6 +89,7 @@ fun LovelaceCard(
         "weather-forecast" -> WeatherForecastCard(config, entityStates, modifier)
 
         else -> UnknownCardStub(config, modifier)
+    }
     }
 }
 
