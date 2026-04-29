@@ -28,6 +28,7 @@ fun main() = application {
         CompositionLocalProvider(
             LocalWindowDecorationInsets provides titleBarInsets,
             LocalHeaderDragModifier provides dragModifier,
+            LocalHeaderTopPadding provides 32.dp,
         ) {
             App()
         }

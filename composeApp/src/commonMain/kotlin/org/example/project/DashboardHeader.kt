@@ -42,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
@@ -76,21 +77,22 @@ fun DashboardHeader(
     val primary = MaterialTheme.colorScheme.primary
     val primaryContainer = MaterialTheme.colorScheme.primaryContainer
     val surface = MaterialTheme.colorScheme.surface
-    val gradientColors = if (darkTheme) {
-        arrayOf(
-            0.0f to primaryContainer,
-            0.6f to surface,
-            1.0f to surface,
+    val surfaceContainerLow = MaterialTheme.colorScheme.surfaceContainerLow
+    val surfaceVariant = MaterialTheme.colorScheme.surfaceVariant
+    val headerBrush = if (darkTheme) {
+        Brush.linearGradient(
+            colorStops = arrayOf(
+                0.0f to surfaceContainerLow,
+                0.4f to surfaceVariant,
+                0.65f to surface,
+                1.0f to surface,
+            ),
+            start = Offset(0f, Float.POSITIVE_INFINITY),
+            end = Offset(Float.POSITIVE_INFINITY, 0f),
         )
     } else {
-        // In light mode the controls are white-on-something, so they must sit on
-        // the saturated primary band — not the near-white surface tail. Push the
-        // transition to the bottom of the header so the surface only appears as
-        // a thin trailing strip below the controls.
-        arrayOf(
-            0.0f to primary,
-            0.65f to primary,
-            1.0f to surface,
+        Brush.linearGradient(
+            colors = listOf(primary, surface),
         )
     }
 
@@ -99,16 +101,15 @@ fun DashboardHeader(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(Brush.verticalGradient(colorStops = gradientColors))
+            .background(headerBrush)
             .then(dragMod)
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(96.dp)
                 .align(Alignment.Center)
-                .padding(horizontal = 16.dp),
+                .padding(start = 16.dp, end = 16.dp, top = LocalHeaderTopPadding.current, bottom = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -140,7 +141,7 @@ fun DashboardHeader(
                         imageVector = Icons.Filled.Menu,
                         contentDescription = if (menuExpanded) "Close menu" else "Open menu",
                         modifier = Modifier.size(30.dp),
-                        tint = Color.White.copy(alpha = 0.75f),
+                        tint = if (darkTheme) Color.White.copy(alpha = 0.75f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.75f),
                     )
                 }
                 DropdownMenu(
@@ -225,7 +226,6 @@ private fun DashboardDropdown(
             shape = RoundedCornerShape(20.dp),
             color = Color.White.copy(alpha = if (enabled) 0.18f else 0.10f),
             contentColor = Color.White,
-            modifier = Modifier.widthIn(min = 120.dp),
         ) {
             Row(
                 modifier = Modifier.padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
