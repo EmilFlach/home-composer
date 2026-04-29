@@ -29,6 +29,8 @@ import org.example.project.auth.LocalHomeAssistantConfig
 import org.example.project.auth.LoginEffect
 import org.example.project.auth.LoginViewModel
 import org.example.project.auth.TokenStorage
+import org.example.project.auth.DashboardCache
+import org.example.project.auth.createCacheSettings
 import org.example.project.auth.createHttpClient
 import org.example.project.auth.createSettings
 import androidx.compose.runtime.CompositionLocalProvider
@@ -53,7 +55,8 @@ fun App() {
     val appPreferences = remember { AppPreferences(settings) }
     val httpClient = remember { createHttpClient() }
     val haClient = remember { HomeAssistantClient(httpClient) }
-    val haWsClient = remember { HomeAssistantWebSocketClient(httpClient) }
+    val dashboardCache = remember { DashboardCache(createCacheSettings()) }
+    val haWsClient = remember { HomeAssistantWebSocketClient(httpClient, dashboardCache) }
 
     @OptIn(coil3.annotation.ExperimentalCoilApi::class)
     setSingletonImageLoaderFactory { context ->

@@ -56,6 +56,7 @@ import androidx.compose.material.icons.filled.Blinds
 import kotlinx.coroutines.isActive
 import org.example.project.auth.HomeAssistantWebSocketClient
 import org.example.project.cards.HaAction
+import org.example.project.cards.LocalEntityStatesLoaded
 import org.example.project.cards.LocalHaActionHandler
 import org.example.project.cards.LocalHaHistoryProvider
 import org.example.project.cards.LocalHaRegistry
@@ -106,6 +107,7 @@ fun DashboardScreen(
     val dashboardConfigs by wsClient.dashboardConfigs.collectAsStateWithLifecycle()
     val dashboardErrors by wsClient.dashboardErrors.collectAsStateWithLifecycle()
     val entityStates by wsClient.entityStates.collectAsStateWithLifecycle()
+    val entityStatesLoaded by wsClient.entityStatesLoaded.collectAsStateWithLifecycle()
     val haRegistry by wsClient.haRegistry.collectAsStateWithLifecycle()
     val uriHandler = LocalUriHandler.current
     CompositionLocalProvider(
@@ -145,6 +147,7 @@ fun DashboardScreen(
             wsClient.fetchHistory(entityIds, hours)
         },
         LocalHaRegistry provides haRegistry,
+        LocalEntityStatesLoaded provides entityStatesLoaded,
     ) {
         var defaultDashboardKey by remember { mutableStateOf(appPreferences.defaultDashboardKey) }
         LovelaceDashboardList(

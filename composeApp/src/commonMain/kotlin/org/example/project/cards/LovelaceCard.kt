@@ -13,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -25,6 +26,8 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import org.example.project.auth.HaEntityState
 
+internal val LocalEntityStatesLoaded = compositionLocalOf { true }
+
 
 @Composable
 fun LovelaceCard(
@@ -35,6 +38,11 @@ fun LovelaceCard(
     val config = card.toCardConfig()
     val visibility = parseVisibility(config.raw?.get("visibility"))
     if (!evaluateVisibility(visibility, entityStates)) return
+    val entityStatesLoaded = LocalEntityStatesLoaded.current
+    if (!entityStatesLoaded && (config.entity != null || config.entities.isNotEmpty())) {
+        SkeletonCard(modifier)
+        return
+    }
     when (config.type) {
         "sensor" -> SensorCard(config, entityStates, modifier)
 

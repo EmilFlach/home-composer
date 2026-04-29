@@ -38,7 +38,10 @@ import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Instant
 
-class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
+class HomeAssistantWebSocketClient(
+    private val httpClient: HttpClient,
+    private val cache: DashboardCache? = null,
+) {
     private val json = Json { ignoreUnknownKeys = true }
     private val clientScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -84,6 +87,9 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
     ) { raw, optimistic -> raw + optimistic }
         .stateIn(clientScope, SharingStarted.Eagerly, emptyMap())
 
+    private val _entityStatesLoaded = MutableStateFlow(false)
+    val entityStatesLoaded: StateFlow<Boolean> = _entityStatesLoaded.asStateFlow()
+
     // area_id -> area_name
     private val _areas = MutableStateFlow<Map<String, String>>(emptyMap())
     // entity_id -> area_id
@@ -100,6 +106,21 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
     private val _floors = MutableStateFlow<Map<String, String>>(emptyMap())
     // area_id -> floor_id
     private val _areaFloorIds = MutableStateFlow<Map<String, String>>(emptyMap())
+
+    init {
+        cache?.loadDashboards()?.let { _dashboards.value = it }
+        cache?.loadDashboardConfigs()?.let { _dashboardConfigs.value = it }
+        cache?.loadRegistry()?.let { reg ->
+            _areas.value = reg.areas
+            _entityAreaIds.value = reg.entityAreaIds
+            _entityNames.value = reg.entityNames
+            _deviceNames.value = reg.deviceNames
+            _deviceAreaIds.value = reg.deviceAreaIds
+            _entityDeviceIds.value = reg.entityDeviceIds
+            _floors.value = reg.floors
+            _areaFloorIds.value = reg.areaFloorIds
+        }
+    }
 
     private data class RegistryPart1(
         val areas: Map<String, String>,
@@ -158,6 +179,7 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
     suspend fun connect(config: HomeAssistantConfig) {
         var nextId = 1L
         val pendingRequests = mutableMapOf<Long, PendingRequest>()
+        var registriesReceived = 0
 
         try {
         httpClient.webSocket(config.baseUrl.toWebSocketUrl()) {
@@ -261,6 +283,7 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
                                     json.decodeFromJsonElement<List<LovelaceDashboard>>(result)
                                 }.getOrElse { emptyList() }
                                 _dashboards.value = list
+                                cache?.saveDashboards(list)
                                 for (dashboard in list) {
                                     val urlPath = dashboard.urlPath ?: continue
                                     val cfgId = nextId++
@@ -278,7 +301,9 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
                                     json.decodeFromJsonElement<LovelaceConfig>(result)
                                 }.getOrNull()
                                 if (cfg != null) {
-                                    _dashboardConfigs.value = _dashboardConfigs.value + (request.key to cfg)
+                                    val updated = _dashboardConfigs.value + (request.key to cfg)
+                                    _dashboardConfigs.value = updated
+                                    cache?.saveDashboardConfigs(updated)
                                 }
                             }
 
@@ -287,6 +312,7 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
                                     json.decodeFromJsonElement<List<HaEntityState>>(result)
                                 }.getOrElse { emptyList() }
                                 _rawEntityStates.value = list.associateBy { it.entityId }
+                                _entityStatesLoaded.value = true
                             }
 
                             PendingRequest.SubscribeEvents -> Unit
@@ -315,6 +341,7 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
                                 }
                                 _areas.value = areaNames
                                 _areaFloorIds.value = floorIds
+                                if (++registriesReceived == 4) maybeSaveRegistry()
                             }
 
                             PendingRequest.GetEntityRegistry -> {
@@ -348,6 +375,7 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
                                 _entityAreaIds.value = areaIds
                                 _entityDeviceIds.value = deviceIds
                                 _entityNames.value = names
+                                if (++registriesReceived == 4) maybeSaveRegistry()
                             }
 
                             PendingRequest.GetDeviceRegistry -> {
@@ -372,6 +400,7 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
                                 }
                                 _deviceNames.value = names
                                 _deviceAreaIds.value = areaIds
+                                if (++registriesReceived == 4) maybeSaveRegistry()
                             }
 
                             PendingRequest.GetFloorRegistry -> {
@@ -384,6 +413,7 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
                                         put(id, name)
                                     }
                                 }
+                                if (++registriesReceived == 4) maybeSaveRegistry()
                             }
                         }
                     }
@@ -418,6 +448,21 @@ class HomeAssistantWebSocketClient(private val httpClient: HttpClient) {
             }
         }
         } catch (_: Exception) { }
+    }
+
+    private fun maybeSaveRegistry() {
+        cache?.saveRegistry(
+            CachedRegistry(
+                areas = _areas.value,
+                entityAreaIds = _entityAreaIds.value,
+                entityNames = _entityNames.value,
+                deviceNames = _deviceNames.value,
+                deviceAreaIds = _deviceAreaIds.value,
+                entityDeviceIds = _entityDeviceIds.value,
+                floors = _floors.value,
+                areaFloorIds = _areaFloorIds.value,
+            )
+        )
     }
 
     private sealed interface PendingRequest {
