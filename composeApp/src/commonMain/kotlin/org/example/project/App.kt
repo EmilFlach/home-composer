@@ -22,6 +22,7 @@ import coil3.request.crossfade
 import kotlinx.coroutines.flow.collect
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
+import org.example.project.auth.AppPreferences
 import org.example.project.auth.HomeAssistantClient
 import org.example.project.auth.HomeAssistantWebSocketClient
 import org.example.project.auth.LocalHomeAssistantConfig
@@ -47,7 +48,9 @@ fun App() {
     val systemDark = isSystemInDarkTheme()
     var darkTheme by remember { mutableStateOf(systemDark) }
 
-    val tokenStorage = remember { TokenStorage(createSettings()) }
+    val settings = remember { createSettings() }
+    val tokenStorage = remember { TokenStorage(settings) }
+    val appPreferences = remember { AppPreferences(settings) }
     val httpClient = remember { createHttpClient() }
     val haClient = remember { HomeAssistantClient(httpClient) }
     val haWsClient = remember { HomeAssistantWebSocketClient(httpClient) }
@@ -104,6 +107,7 @@ fun App() {
                                 config = config,
                                 client = haClient,
                                 wsClient = haWsClient,
+                                appPreferences = appPreferences,
                                 darkTheme = darkTheme,
                                 onToggleDarkMode = { darkTheme = !darkTheme },
                                 onLogout = {

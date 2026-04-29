@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
@@ -20,10 +22,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -60,6 +66,8 @@ fun DashboardHeader(
     darkTheme: Boolean,
     onToggleDarkMode: () -> Unit,
     onLogout: () -> Unit,
+    onOpenSettings: () -> Unit = {},
+    defaultDashboardKey: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val selectedTitle = items.firstOrNull { it.key == selectedKey }?.title
@@ -104,35 +112,69 @@ fun DashboardHeader(
                     title = selectedTitle,
                     items = items,
                     selectedKey = selectedKey,
+                    defaultKey = defaultDashboardKey,
                     onSelect = onSelectDashboard,
                     modifier = Modifier.weight(1f, fill = false),
                 )
                 ConnectionStatusDot(connectionStatus)
             }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(0.dp),
-            ) {
+            Box {
+                var menuExpanded by remember { mutableStateOf(false) }
+                val menuContainerColor = if (darkTheme) Color(0xFF200050) else Color(0xFF6D28D9)
+                val menuIconTint = Color.White.copy(alpha = 0.85f)
+                val itemPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
                 IconButton(
-                    onClick = onToggleDarkMode,
-                    modifier = Modifier.size(36.dp),
+                    onClick = { menuExpanded = !menuExpanded },
+                    modifier = Modifier.size(54.dp),
                 ) {
                     Icon(
-                        imageVector = if (darkTheme) Icons.Filled.LightMode else Icons.Filled.DarkMode,
-                        contentDescription = if (darkTheme) "Light mode" else "Dark mode",
-                        modifier = Modifier.size(20.dp),
+                        imageVector = Icons.Filled.Menu,
+                        contentDescription = if (menuExpanded) "Close menu" else "Open menu",
+                        modifier = Modifier.size(30.dp),
                         tint = Color.White.copy(alpha = 0.75f),
                     )
                 }
-                IconButton(
-                    onClick = onLogout,
-                    modifier = Modifier.size(36.dp),
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                    modifier = Modifier.width(48.dp),
+                    containerColor = menuContainerColor,
+                    tonalElevation = 0.dp,
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Logout,
-                        contentDescription = "Log out",
-                        modifier = Modifier.size(20.dp),
-                        tint = Color.White.copy(alpha = 0.75f),
+                    DropdownMenuItem(
+                        text = {
+                            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                Icon(Icons.Filled.Settings, contentDescription = "Settings", modifier = Modifier.size(20.dp), tint = menuIconTint)
+                            }
+                        },
+                        onClick = { onOpenSettings(); menuExpanded = false },
+                        contentPadding = itemPadding,
+                        colors = MenuDefaults.itemColors(textColor = Color.White),
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = if (darkTheme) Icons.Filled.LightMode else Icons.Filled.DarkMode,
+                                    contentDescription = if (darkTheme) "Light mode" else "Dark mode",
+                                    modifier = Modifier.size(20.dp),
+                                    tint = menuIconTint,
+                                )
+                            }
+                        },
+                        onClick = { onToggleDarkMode() },
+                        contentPadding = itemPadding,
+                        colors = MenuDefaults.itemColors(textColor = Color.White),
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Log out", modifier = Modifier.size(20.dp), tint = menuIconTint)
+                            }
+                        },
+                        onClick = { onLogout(); menuExpanded = false },
+                        contentPadding = itemPadding,
+                        colors = MenuDefaults.itemColors(textColor = Color.White),
                     )
                 }
             }
@@ -161,6 +203,7 @@ private fun DashboardDropdown(
     title: String,
     items: List<DashboardSelectorItem>,
     selectedKey: String?,
+    defaultKey: String?,
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -207,6 +250,13 @@ private fun DashboardDropdown(
                             fontWeight = if (item.key == selectedKey) FontWeight.SemiBold else FontWeight.Normal,
                         )
                     },
+                    trailingIcon = if (item.key == defaultKey) ({
+                        Icon(
+                            imageVector = Icons.Filled.Home,
+                            contentDescription = "Default dashboard",
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }) else null,
                     onClick = {
                         onSelect(item.key)
                         expanded = false

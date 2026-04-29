@@ -47,6 +47,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import org.example.project.auth.AppPreferences
 import org.example.project.auth.ConnectionStatus
 import org.example.project.auth.HomeAssistantClient
 import org.example.project.auth.HomeAssistantConfig
@@ -67,6 +68,7 @@ fun DashboardScreen(
     config: HomeAssistantConfig,
     client: HomeAssistantClient,
     wsClient: HomeAssistantWebSocketClient,
+    appPreferences: AppPreferences,
     darkTheme: Boolean = false,
     onToggleDarkMode: () -> Unit = {},
     onLogout: () -> Unit = {},
@@ -144,6 +146,7 @@ fun DashboardScreen(
         },
         LocalHaRegistry provides haRegistry,
     ) {
+        var defaultDashboardKey by remember { mutableStateOf(appPreferences.defaultDashboardKey) }
         LovelaceDashboardList(
             dashboards = dashboards,
             configs = dashboardConfigs,
@@ -153,6 +156,11 @@ fun DashboardScreen(
             darkTheme = darkTheme,
             onToggleDarkMode = onToggleDarkMode,
             onLogout = onLogout,
+            defaultDashboardKey = defaultDashboardKey,
+            onSaveDefaultDashboard = { key ->
+                appPreferences.defaultDashboardKey = key
+                defaultDashboardKey = key
+            },
             modifier = Modifier.fillMaxSize(),
         )
     }
