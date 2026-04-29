@@ -11,14 +11,6 @@ internal fun AlarmPanelCardStub(config: LovelaceCardConfig, modifier: Modifier =
 }
 
 @Composable
-internal fun AreaCardStub(config: LovelaceCardConfig, modifier: Modifier = Modifier) {
-    StubScaffold(config, modifier) {
-        val area = (config.raw?.get("area"))?.toString()?.trim('"')
-        if (area != null) StubLine("area", area)
-    }
-}
-
-@Composable
 internal fun ButtonCardStub(config: LovelaceCardConfig, modifier: Modifier = Modifier) {
     StubScaffold(config, modifier) {
         config.entity?.let { StubLine("entity", it) }

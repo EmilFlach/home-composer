@@ -47,7 +47,7 @@ fun LovelaceCard(
         "sensor" -> SensorCard(config, entityStates, modifier)
 
         "alarm-panel" -> AlarmPanelCardStub(config, modifier)
-        "area" -> AreaCardStub(config, modifier)
+        "area" -> AreaCard(config, entityStates, modifier)
         "button" -> ButtonCardStub(config, modifier)
         "conditional" -> ConditionalCardStub(config, modifier)
         "entities" -> EntitiesCardStub(config, modifier)
