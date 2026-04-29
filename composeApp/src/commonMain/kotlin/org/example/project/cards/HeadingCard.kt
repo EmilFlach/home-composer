@@ -14,28 +14,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
-import androidx.compose.material.icons.filled.Blinds
 import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.DoorFront
-import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.LockOpen
-import androidx.compose.material.icons.filled.MotionPhotosOn
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Power
-import androidx.compose.material.icons.filled.Sensors
-import androidx.compose.material.icons.filled.Thermostat
-import androidx.compose.material.icons.filled.ToggleOn
-import androidx.compose.material.icons.filled.WaterDrop
-import androidx.compose.material.icons.filled.WbSunny
-import androidx.compose.material.icons.filled.Whatshot
-import androidx.compose.material.icons.filled.Window
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.MaterialTheme
+import org.example.project.icons.HaIcon
+import org.example.project.icons.MdiIcon
+import org.example.project.icons.haEntityIcon
+import org.example.project.icons.mdiStringToHaIcon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -136,12 +122,10 @@ private fun HeadingBadge(
             doubleTapAction = badge.doubleTapAction,
             contextEntity = badge.entity,
         ) {
-            val btnIcon = mdiToImageVector(badge.icon)
-            if (btnIcon != null) {
-                Icon(
-                    imageVector = btnIcon,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
+            if (badge.icon != null) {
+                MdiIcon(
+                    icon = mdiStringToHaIcon(badge.icon, fallback = haEntityIcon(null, badge.entity)),
+                    size = 16.dp,
                 )
             }
             if (label != null) {
@@ -156,8 +140,8 @@ private fun HeadingBadge(
 
     // Entity badge
     val state = badge.entity?.let(entityStates::get)
-    val badgeIcon: ImageVector? = if (badge.showIcon) {
-        mdiToImageVector(badge.icon ?: state?.icon) ?: resolveEntityBadgeIcon(state, badge.entity)
+    val badgeHaIcon: HaIcon? = if (badge.showIcon) {
+        mdiStringToHaIcon(badge.icon ?: state?.icon, fallback = haEntityIcon(state, badge.entity))
     } else null
 
     val contentKeys = when {
@@ -193,12 +177,8 @@ private fun HeadingBadge(
         contextEntity = badge.entity,
         isActive = state?.isActive() ?: false,
     ) {
-        if (badgeIcon != null) {
-            Icon(
-                imageVector = badgeIcon,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-            )
+        if (badgeHaIcon != null) {
+            MdiIcon(icon = badgeHaIcon, size = 16.dp)
         }
         if (displayName != null) {
             Text(
@@ -352,72 +332,4 @@ private fun HaEntityState.formatBadgeState(): String {
     }
 }
 
-private fun mdiToImageVector(mdi: String?): ImageVector? = when (mdi) {
-    // Motion / occupancy
-    "mdi:motion-sensor", "mdi:motion-sensor-off",
-    "mdi:run", "mdi:walk" -> Icons.Filled.MotionPhotosOn
-    // Door / window
-    "mdi:door-open", "mdi:door-closed" -> Icons.Filled.DoorFront
-    "mdi:window-open", "mdi:window-closed" -> Icons.Filled.Window
-    "mdi:curtains", "mdi:curtains-closed" -> Icons.Filled.Blinds
-    "mdi:blinds", "mdi:blinds-horizontal",
-    "mdi:blinds-open", "mdi:blinds-horizontal-closed",
-    "mdi:garage", "mdi:garage-open" -> Icons.Filled.Blinds
-    // Lights
-    "mdi:lightbulb", "mdi:lightbulb-on", "mdi:lightbulb-off",
-    "mdi:lightbulb-auto", "mdi:lightbulb-auto-outline",
-    "mdi:ceiling-light", "mdi:ceiling-light-outline",
-    "mdi:floor-lamp", "mdi:led-strip-variant" -> Icons.Filled.Lightbulb
-    // Lock
-    "mdi:lock", "mdi:lock-outline" -> Icons.Filled.Lock
-    "mdi:lock-open", "mdi:lock-open-outline" -> Icons.Filled.LockOpen
-    // Climate
-    "mdi:thermostat", "mdi:thermometer" -> Icons.Filled.Thermostat
-    "mdi:sun-thermometer", "mdi:sun-thermometer-outline" -> Icons.Filled.WbSunny
-    // Media
-    "mdi:play-circle", "mdi:music", "mdi:music-note",
-    "mdi:filmstrip", "mdi:cast", "mdi:cast-off",
-    "mdi:sony-playstation", "mdi:television", "mdi:speaker" -> Icons.Filled.PlayArrow
-    // People
-    "mdi:account", "mdi:account-circle" -> Icons.Filled.Person
-    // Sensors / environment
-    "mdi:water", "mdi:water-alert" -> Icons.Filled.WaterDrop
-    "mdi:smoke-detector", "mdi:smoke", "mdi:fire", "mdi:fire-alert" -> Icons.Filled.Whatshot
-    "mdi:toggle-switch", "mdi:toggle-switch-off" -> Icons.Filled.ToggleOn
-    "mdi:power", "mdi:power-plug", "mdi:power-plug-off" -> Icons.Filled.Power
-    "mdi:home-automation" -> Icons.Filled.Power
-    "mdi:weather-sunny" -> Icons.Filled.WbSunny
-    else -> null
-}
 
-private fun resolveEntityBadgeIcon(state: HaEntityState?, entityId: String?): ImageVector? {
-    val domain = state?.domain ?: entityId?.substringBefore('.', missingDelimiterValue = "") ?: return null
-    val isOn = state?.state?.lowercase() == "on"
-    return when (domain) {
-        "binary_sensor" -> when (state?.attributeString("device_class")) {
-            "occupancy", "motion", "presence", "vibration" -> Icons.Filled.MotionPhotosOn
-            "door", "opening" -> Icons.Filled.DoorFront
-            "window" -> Icons.Filled.Window
-            "moisture" -> Icons.Filled.WaterDrop
-            "smoke", "co", "co2", "gas" -> Icons.Filled.Whatshot
-            "lock" -> if (isOn) Icons.Filled.LockOpen else Icons.Filled.Lock
-            "connectivity" -> Icons.Filled.Sensors
-            else -> Icons.Filled.Sensors
-        }
-        "sensor" -> when (state?.attributeString("device_class")) {
-            "temperature" -> Icons.Filled.Thermostat
-            "humidity" -> Icons.Filled.WaterDrop
-            else -> Icons.Filled.Sensors
-        }
-        "media_player" -> Icons.Filled.PlayArrow
-        "cover" -> Icons.Filled.Blinds
-        "light" -> Icons.Filled.Lightbulb
-        "switch", "input_boolean" -> Icons.Filled.ToggleOn
-        "lock" -> if (isOn) Icons.Filled.LockOpen else Icons.Filled.Lock
-        "climate", "water_heater" -> Icons.Filled.Thermostat
-        "group", "automation", "script" -> Icons.Filled.Power
-        "person", "device_tracker" -> Icons.Filled.Person
-        "weather", "sun" -> Icons.Filled.WbSunny
-        else -> Icons.AutoMirrored.Filled.HelpOutline
-    }
-}

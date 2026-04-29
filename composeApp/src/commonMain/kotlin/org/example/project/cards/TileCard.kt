@@ -19,29 +19,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Air
-import androidx.compose.material.icons.filled.Blinds
-import androidx.compose.material.icons.filled.DoorFront
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.LockOpen
-import androidx.compose.material.icons.filled.MotionPhotosOn
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Power
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.Sensors
-import androidx.compose.material.icons.filled.Thermostat
-import androidx.compose.material.icons.filled.ToggleOn
-import androidx.compose.material.icons.filled.WaterDrop
-import androidx.compose.material.icons.filled.WbSunny
-import androidx.compose.material.icons.filled.WbTwilight
-import androidx.compose.material.icons.filled.Whatshot
-import androidx.compose.material.icons.filled.Window
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -49,6 +28,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import org.example.project.icons.HaIcon
+import org.example.project.icons.MdiIcon
+import org.example.project.icons.haEntityIcon
+import org.example.project.icons.mdiStringToHaIcon
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
@@ -67,7 +50,6 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.font.FontWeight
@@ -82,6 +64,7 @@ import kotlinx.serialization.json.put
 import org.example.project.auth.HaEntityState
 import org.example.project.auth.domain
 import org.example.project.auth.friendlyName
+import org.example.project.auth.icon
 import org.example.project.auth.isActive
 import org.example.project.auth.unitOfMeasurement
 import kotlin.math.roundToInt
@@ -103,7 +86,7 @@ internal fun TileCard(
 
     val isActive = state?.isActive() ?: false
     val accent = resolveAccent(stringField(raw, "color"), isActive)
-    val icon = iconFor(state, entityId)
+    val icon: HaIcon = mdiStringToHaIcon(config.icon ?: state?.icon, fallback = haEntityIcon(state, entityId))
     val hideState = boolField(raw, "hide_state", default = false)
     val vertical = boolField(raw, "vertical", default = false)
     val stateText = if (hideState) null else state.formatStateText(entityId)
@@ -378,7 +361,7 @@ private fun HaEntityState.percentValue(): Float? {
 
 @Composable
 private fun HorizontalTileBody(
-    icon: ImageVector,
+    icon: HaIcon,
     accent: Color,
     name: String,
     stateText: String?,
@@ -417,7 +400,7 @@ private fun HorizontalTileBody(
 
 @Composable
 private fun VerticalTileBody(
-    icon: ImageVector,
+    icon: HaIcon,
     accent: Color,
     name: String,
     stateText: String?,
@@ -451,19 +434,14 @@ private fun VerticalTileBody(
 }
 
 @Composable
-private fun TileIconBadge(icon: ImageVector, accent: Color) {
+private fun TileIconBadge(icon: HaIcon, accent: Color) {
     Box(
         modifier = Modifier
             .size(40.dp)
             .background(color = accent.copy(alpha = 0.18f), shape = CircleShape),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = accent,
-            modifier = Modifier.size(22.dp),
-        )
+        MdiIcon(icon = icon, tint = accent, size = 22.dp)
     }
 }
 
@@ -512,37 +490,6 @@ private fun humanizeState(raw: String, domain: String): String {
     }
 }
 
-private fun iconFor(state: HaEntityState?, entityId: String?): ImageVector {
-    val domain = state?.domain ?: entityId?.substringBefore('.', missingDelimiterValue = "") ?: ""
-    val id = state?.entityId ?: entityId ?: ""
-    val isOn = state?.isActive() ?: false
-    return when (domain) {
-        "light" -> Icons.Filled.Lightbulb
-        "switch", "input_boolean" -> Icons.Filled.ToggleOn
-        "fan" -> Icons.Filled.Air
-        "cover" -> Icons.Filled.Blinds
-        "lock" -> if (isOn) Icons.Filled.LockOpen else Icons.Filled.Lock
-        "climate", "water_heater" -> Icons.Filled.Thermostat
-        "media_player" -> Icons.Filled.PlayArrow
-        "binary_sensor" -> Icons.Filled.MotionPhotosOn
-        "sensor" -> if ("sunrise" in id || "sunset" in id || "dawn" in id || "dusk" in id ||
-            "next_rising" in id || "next_setting" in id) Icons.Filled.WbTwilight
-        else Icons.Filled.Sensors
-        "person", "device_tracker" -> Icons.Filled.Person
-        "automation", "script" -> Icons.Filled.Power
-        "weather" -> Icons.Filled.WbSunny
-        "sun" -> Icons.Filled.WbSunny
-        "alarm_control_panel" -> Icons.Filled.Notifications
-        "humidifier" -> Icons.Filled.WaterDrop
-        "siren" -> Icons.Filled.Whatshot
-        "input_button", "button" -> Icons.Filled.Power
-        "zone" -> Icons.Filled.Home
-        "vacuum" -> Icons.Filled.Home
-        "binary_sensor.door", "door" -> Icons.Filled.DoorFront
-        "window" -> Icons.Filled.Window
-        else -> Icons.AutoMirrored.Filled.HelpOutline
-    }
-}
 
 @Composable
 private fun resolveAccent(colorName: String?, isActive: Boolean): Color {
