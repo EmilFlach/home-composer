@@ -109,6 +109,8 @@ class HomeAssistantWebSocketClient(
     private val _floors = MutableStateFlow<Map<String, String>>(emptyMap())
     // area_id -> floor_id
     private val _areaFloorIds = MutableStateFlow<Map<String, String>>(emptyMap())
+    // system temperature unit, e.g. "°C"
+    private val _temperatureUnit = MutableStateFlow<String?>(null)
 
     init {
         cache?.loadDashboards()?.let { _dashboards.value = it }
@@ -143,7 +145,8 @@ class HomeAssistantWebSocketClient(
         combine(_deviceNames, _deviceAreaIds, _entityDeviceIds, _floors, _areaFloorIds) { d, e, f, g, h ->
             RegistryPart2(d, e, f, g, h)
         },
-    ) { p1, p2 ->
+        _temperatureUnit,
+    ) { p1, p2, tempUnit ->
         HaRegistry(
             areas = p1.areas,
             entityAreaIds = p1.entityAreaIds,
@@ -153,6 +156,7 @@ class HomeAssistantWebSocketClient(
             entityDeviceIds = p2.entityDeviceIds,
             floors = p2.floors,
             areaFloorIds = p2.areaFloorIds,
+            temperatureUnit = tempUnit,
         )
     }.stateIn(clientScope, SharingStarted.Eagerly, HaRegistry())
 
@@ -258,6 +262,10 @@ class HomeAssistantWebSocketClient(
                         val floorId = nextId++
                         pendingRequests[floorId] = PendingRequest.GetFloorRegistry
                         send(Frame.Text("""{"id":$floorId,"type":"config/floor_registry/list"}"""))
+
+                        val configId = nextId++
+                        pendingRequests[configId] = PendingRequest.GetConfig
+                        send(Frame.Text("""{"id":$configId,"type":"get_config"}"""))
                     }
 
                     "auth_invalid" -> {
@@ -423,6 +431,13 @@ class HomeAssistantWebSocketClient(
                                 }
                                 if (++registriesReceived == 4) maybeSaveRegistry()
                             }
+
+                            PendingRequest.GetConfig -> {
+                                val obj = result as? JsonObject ?: continue
+                                val unitSystem = obj["unit_system"] as? JsonObject ?: continue
+                                val tempUnit = (unitSystem["temperature"] as? JsonPrimitive)?.contentOrNull
+                                if (tempUnit != null) _temperatureUnit.value = tempUnit
+                            }
                         }
                     }
 
@@ -484,6 +499,7 @@ class HomeAssistantWebSocketClient(
         data object GetEntityRegistry : PendingRequest
         data object GetDeviceRegistry : PendingRequest
         data object GetFloorRegistry : PendingRequest
+        data object GetConfig : PendingRequest
     }
 }
 

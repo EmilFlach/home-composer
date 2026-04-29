@@ -11,6 +11,7 @@ data class HaRegistry(
     val entityDeviceIds: Map<String, String> = emptyMap(), // entity_id -> device_id
     val floors: Map<String, String> = emptyMap(),          // floor_id -> floor_name
     val areaFloorIds: Map<String, String> = emptyMap(),    // area_id -> floor_id
+    val temperatureUnit: String? = null,                   // system temperature unit, e.g. "°C"
 )
 
 internal val LocalHaRegistry = staticCompositionLocalOf { HaRegistry() }

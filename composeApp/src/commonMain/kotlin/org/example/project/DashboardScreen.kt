@@ -59,6 +59,7 @@ import org.example.project.cards.LocalEntityStatesLoaded
 import org.example.project.cards.LocalHaActionHandler
 import org.example.project.cards.LocalHaHistoryProvider
 import org.example.project.cards.LocalHaRegistry
+import org.example.project.cards.MoreInfoSheet
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
@@ -97,6 +98,7 @@ fun DashboardScreen(
     val entityStates by wsClient.entityStates.collectAsStateWithLifecycle()
     val entityStatesLoaded by wsClient.entityStatesLoaded.collectAsStateWithLifecycle()
     val haRegistry by wsClient.haRegistry.collectAsStateWithLifecycle()
+    var moreInfoEntityId by remember { mutableStateOf<String?>(null) }
     val uriHandler = LocalUriHandler.current
     CompositionLocalProvider(
         LocalHaActionHandler provides { action, contextEntity ->
@@ -128,7 +130,10 @@ fun DashboardScreen(
                 }
                 is HaAction.OpenUrl -> uriHandler.openUri(action.url)
                 is HaAction.Navigate -> Unit
-                is HaAction.MoreInfo -> Unit
+                is HaAction.MoreInfo -> {
+                    val entityId = action.entity ?: contextEntity ?: return@provides
+                    moreInfoEntityId = entityId
+                }
             }
         },
         LocalHaHistoryProvider provides { entityIds, hours ->
@@ -156,6 +161,13 @@ fun DashboardScreen(
             onThemeChange = onThemeChange,
             modifier = Modifier.fillMaxSize(),
         )
+        moreInfoEntityId?.let { entityId ->
+            MoreInfoSheet(
+                entityId = entityId,
+                entityStates = entityStates,
+                onDismiss = { moreInfoEntityId = null },
+            )
+        }
     }
 }
 
