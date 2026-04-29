@@ -2,6 +2,7 @@ package org.example.project
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -88,43 +89,85 @@ fun LoginScreen(
             .then(backgroundModifier)
             .safeContentPadding(),
     ) {
-        Row(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 20.dp, end = 8.dp, top = 16.dp, bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Text(
-                    text = "home composer",
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = MaterialTheme.typography.headlineMedium.fontSize * 1.3f,
-                    ),
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                Text(
-                    text = "Your smart home, beautifully connected",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontSize = MaterialTheme.typography.bodySmall.fontSize * 1.3f,
-                    ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            IconButton(onClick = onToggleDarkMode, modifier = Modifier.size(40.dp)) {
-                Icon(
-                    imageVector = if (darkTheme) Icons.Filled.LightMode else Icons.Filled.DarkMode,
-                    contentDescription = if (darkTheme) "Light mode" else "Dark mode",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-            Button(onClick = { showConnectSheet = true }) {
-                Text("Connect")
+            val narrow = maxWidth < 400.dp
+            if (narrow) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "home composer",
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = MaterialTheme.typography.headlineMedium.fontSize * 1.3f,
+                        ),
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = "Your smart home, beautifully connected",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = MaterialTheme.typography.bodySmall.fontSize * 1.3f,
+                            ),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f),
+                        )
+                        IconButton(onClick = onToggleDarkMode, modifier = Modifier.size(40.dp)) {
+                            Icon(
+                                imageVector = if (darkTheme) Icons.Filled.LightMode else Icons.Filled.DarkMode,
+                                contentDescription = if (darkTheme) "Light mode" else "Dark mode",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                        Button(onClick = { showConnectSheet = true }) {
+                            Text("Connect")
+                        }
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        Text(
+                            text = "home composer",
+                            style = MaterialTheme.typography.headlineMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = MaterialTheme.typography.headlineMedium.fontSize * 1.3f,
+                            ),
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Text(
+                            text = "Your smart home, beautifully connected",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = MaterialTheme.typography.bodySmall.fontSize * 1.3f,
+                            ),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    IconButton(onClick = onToggleDarkMode, modifier = Modifier.size(40.dp)) {
+                        Icon(
+                            imageVector = if (darkTheme) Icons.Filled.LightMode else Icons.Filled.DarkMode,
+                            contentDescription = if (darkTheme) "Light mode" else "Dark mode",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                    Button(onClick = { showConnectSheet = true }) {
+                        Text("Connect")
+                    }
+                }
             }
         }
 
