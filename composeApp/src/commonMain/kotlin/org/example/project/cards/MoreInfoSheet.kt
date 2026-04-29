@@ -63,8 +63,11 @@ import kotlinx.serialization.json.floatOrNull
 import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.put
 import org.example.project.auth.HaEntityState
+import org.example.project.auth.HaHistorySeries
 import org.example.project.auth.attributeString
+import org.example.project.auth.formatStateValue
 import org.example.project.auth.friendlyName
+import org.example.project.auth.unitOfMeasurement
 import org.example.project.icons.MdiIcon
 import org.example.project.icons.mdiIconByName
 import kotlin.math.roundToInt
@@ -82,6 +85,7 @@ fun MoreInfoSheet(
     val registry = LocalHaRegistry.current
     val handler = LocalHaActionHandler.current
     val displayName = registry.entityNames[entityId] ?: state?.friendlyName ?: entityId
+    var showHistory by remember(entityId) { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -99,14 +103,91 @@ fun MoreInfoSheet(
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
             )
             HorizontalDivider()
-            when (domain) {
-                "cover" -> CoverSheetContent(state, entityId, handler)
-                "climate" -> ClimateSheetContent(state, entityId, handler)
-                "media_player" -> MediaPlayerSheetContent(state, entityId, handler)
-                else -> DefaultSheetContent(state)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = !showHistory,
+                    onClick = { showHistory = false },
+                    label = { Text("Controls") },
+                    leadingIcon = { MdiIcon(icon = mdiIconByName("tune"), size = FilterChipDefaults.IconSize) },
+                )
+                FilterChip(
+                    selected = showHistory,
+                    onClick = { showHistory = true },
+                    label = { Text("History") },
+                    leadingIcon = { MdiIcon(icon = mdiIconByName("chart-line"), size = FilterChipDefaults.IconSize) },
+                )
+            }
+            if (showHistory) {
+                HistorySheetContent(entityId = entityId, entityState = state)
+            } else {
+                when (domain) {
+                    "cover" -> CoverSheetContent(state, entityId, handler)
+                    "climate" -> ClimateSheetContent(state, entityId, handler)
+                    "media_player" -> MediaPlayerSheetContent(state, entityId, handler)
+                    else -> DefaultSheetContent(state)
+                }
             }
         }
     }
+}
+
+@Composable
+private fun HistorySheetContent(
+    entityId: String,
+    entityState: HaEntityState?,
+) {
+    val provider = LocalHaHistoryProvider.current
+    var series by remember(entityId) { mutableStateOf<HaHistorySeries?>(null) }
+    var isLoading by remember(entityId) { mutableStateOf(true) }
+
+    LaunchedEffect(entityId) {
+        val result = provider(listOf(entityId), 24)
+        series = result.firstOrNull()
+        isLoading = false
+    }
+
+    val unit = entityState?.unitOfMeasurement
+    val currentValue = entityState?.let { formatStateValue(it.state, unit) }
+
+    if (currentValue != null) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            Text(
+                text = "Last 24h",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = currentValue,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                if (unit != null) {
+                    Text(
+                        text = unit,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 2.dp),
+                    )
+                }
+            }
+        }
+    }
+
+    HistoryEntityGraphView(
+        entityState = entityState,
+        series = series,
+        hoursToShow = 24,
+        isLoading = isLoading,
+        color = MaterialTheme.colorScheme.primary,
+    )
 }
 
 @Composable

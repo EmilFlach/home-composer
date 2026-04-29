@@ -313,6 +313,25 @@ private fun CategoricalHistoryStrip(
     }
 }
 
+@Composable
+internal fun HistoryEntityGraphView(
+    entityState: HaEntityState?,
+    series: HaHistorySeries?,
+    hoursToShow: Int,
+    isLoading: Boolean,
+    color: Color,
+) {
+    val deviceClass = entityState?.attributeString("device_class")
+    val numericPoints = series?.numericPoints().orEmpty()
+    val hasNumericData = numericPoints.size >= 2 && deviceClass != "enum"
+    when {
+        isLoading && series == null -> HistoryPlaceholder("Loading…")
+        series == null || series.points.isEmpty() -> HistoryPlaceholder("No history in last ${hoursToShow}h")
+        hasNumericData -> NumericHistoryGraph(points = numericPoints, hoursToShow = hoursToShow, color = color)
+        else -> CategoricalHistoryStrip(series = series, hoursToShow = hoursToShow)
+    }
+}
+
 private fun HaHistorySeries.numericPoints(): List<Pair<Long, Float>> =
     points.mapNotNull { p ->
         val v = p.state.toFloatOrNull() ?: return@mapNotNull null
