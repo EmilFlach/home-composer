@@ -246,15 +246,15 @@ private fun HueSlider(
                 .fillMaxSize()
                 .background(
                     Brush.horizontalGradient(
-                        listOf(
-                            Color.Red,
-                            Color(0xFFFF7F00),
-                            Color.Yellow,
-                            Color.Green,
-                            Color.Cyan,
-                            Color.Blue,
-                            Color.Magenta,
-                            Color.Red,
+                        colorStops = arrayOf(
+                            0f to Color.Red,
+                            30f / 360f to Color(0xFFFF7F00),
+                            60f / 360f to Color.Yellow,
+                            120f / 360f to Color.Green,
+                            180f / 360f to Color.Cyan,
+                            240f / 360f to Color.Blue,
+                            300f / 360f to Color.Magenta,
+                            1f to Color.Red,
                         ),
                     ),
                 )
