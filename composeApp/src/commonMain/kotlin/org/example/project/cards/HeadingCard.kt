@@ -19,6 +19,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.serialization.json.JsonArray
@@ -32,7 +33,6 @@ import org.example.project.auth.domain
 import org.example.project.auth.formatStateValue
 import org.example.project.auth.friendlyName
 import org.example.project.auth.icon
-import org.example.project.auth.isActive
 import org.example.project.auth.unitOfMeasurement
 import org.example.project.icons.HaIcon
 import org.example.project.icons.MdiIcon
@@ -179,15 +179,20 @@ private fun HeadingBadge(
         contentText = parts.joinToString(" · ")
     }
 
+    val badgeIconColor = resolveBadgeColor(badge.color)
     BadgeChip(
         tapAction = badge.tapAction,
         holdAction = badge.holdAction,
         doubleTapAction = badge.doubleTapAction,
         contextEntity = badge.entity,
-        isActive = state?.isActive() ?: false,
     ) {
         if (badgeHaIcon != null) {
-            MdiIcon(icon = badgeHaIcon, size = 18.dp, modifier = Modifier.offset(2.dp))
+            MdiIcon(
+                icon = badgeHaIcon,
+                size = 18.dp,
+                modifier = Modifier.offset(2.dp),
+                tint = badgeIconColor ?: LocalContentColor.current,
+            )
         }
         if (displayName != null) {
             Text(
@@ -210,7 +215,6 @@ private fun BadgeChip(
     holdAction: HaAction = HaAction.None,
     doubleTapAction: HaAction = HaAction.None,
     contextEntity: String? = null,
-    isActive: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val onAction = LocalHaActionHandler.current
@@ -218,16 +222,8 @@ private fun BadgeChip(
         holdAction !is HaAction.None ||
         doubleTapAction !is HaAction.None
 
-    val chipBackground = if (isActive) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.97f)
-    }
-    val chipContentColor = if (isActive) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
+    val chipBackground = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.97f)
+    val chipContentColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     Row(
         modifier = Modifier
@@ -250,6 +246,38 @@ private fun BadgeChip(
     ) {
         CompositionLocalProvider(LocalContentColor provides chipContentColor) {
             content()
+        }
+    }
+}
+
+@Composable
+private fun resolveBadgeColor(colorName: String?): Color? {
+    val scheme = MaterialTheme.colorScheme
+    return colorName?.lowercase()?.let { name ->
+        when (name) {
+            "primary" -> scheme.primary
+            "accent" -> scheme.secondary
+            "red" -> Color(0xFFE53935)
+            "pink" -> Color(0xFFD81B60)
+            "purple" -> Color(0xFF8E24AA)
+            "deep-purple", "deep_purple" -> Color(0xFF5E35B1)
+            "indigo" -> Color(0xFF3949AB)
+            "blue" -> Color(0xFF1E88E5)
+            "light-blue", "light_blue" -> Color(0xFF039BE5)
+            "cyan" -> Color(0xFF00ACC1)
+            "teal" -> Color(0xFF00897B)
+            "green" -> Color(0xFF43A047)
+            "light-green", "light_green" -> Color(0xFF7CB342)
+            "lime" -> Color(0xFFC0CA33)
+            "yellow" -> Color(0xFFFDD835)
+            "amber" -> Color(0xFFFFB300)
+            "orange" -> Color(0xFFFB8C00)
+            "deep-orange", "deep_orange" -> Color(0xFFF4511E)
+            "brown" -> Color(0xFF6D4C41)
+            "grey", "gray" -> Color(0xFF757575)
+            "blue-grey", "blue_grey" -> Color(0xFF546E7A)
+            "disabled" -> scheme.outline
+            else -> null
         }
     }
 }
