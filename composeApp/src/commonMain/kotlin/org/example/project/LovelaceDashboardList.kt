@@ -1,18 +1,23 @@
 package org.example.project
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,6 +46,7 @@ import org.example.project.auth.DEFAULT_DASHBOARD_KEY
 import org.example.project.auth.HaEntityState
 import org.example.project.auth.LovelaceConfig
 import org.example.project.auth.LovelaceDashboard
+import org.example.project.auth.LovelaceSection
 import org.example.project.auth.LovelaceView
 import org.example.project.cards.LovelaceCard
 import org.example.project.cards.evaluateVisibility
@@ -287,14 +293,122 @@ private fun LazyView(
             LovelaceCard(card = rootCards[index], entityStates = entityStates)
         }
 
-        sections.forEachIndexed { sectionIndex, section ->
-            if (!evaluateVisibility(parseVisibility(section.visibility), entityStates)) return@forEachIndexed
-            items(section.cards.size, key = { "section-$sectionIndex-card-$it" }) { cardIndex ->
-                LovelaceCard(card = section.cards[cardIndex], entityStates = entityStates)
+        val maxColumns = view.maxColumns
+        if (sections.isNotEmpty() && maxColumns != null) {
+            item(key = "sections-grid") {
+                SectionsGrid(
+                    sections = sections,
+                    entityStates = entityStates,
+                    maxColumns = maxColumns,
+                )
             }
-            item(key = "section-$sectionIndex-spacer") {
-                Spacer(Modifier.height(12.dp))
+        } else {
+            sections.forEachIndexed { sectionIndex, section ->
+                val isVisible = evaluateVisibility(parseVisibility(section.visibility), entityStates)
+                item(key = "section-$sectionIndex") {
+                    AnimatedVisibility(
+                        visible = isVisible,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically(),
+                    ) {
+                        Column {
+                            SectionContent(section = section, entityStates = entityStates)
+                            Spacer(Modifier.height(12.dp))
+                        }
+                    }
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun SectionsGrid(
+    sections: List<LovelaceSection>,
+    entityStates: Map<String, HaEntityState>,
+    maxColumns: Int,
+    modifier: Modifier = Modifier,
+) {
+    if (sections.isEmpty()) return
+
+    BoxWithConstraints(
+        modifier = modifier.fillMaxWidth(),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        val effectiveCols = when {
+            maxWidth < 600.dp -> 1
+            maxWidth < 1200.dp -> minOf(maxColumns, 2)
+            else -> maxColumns
+        }.coerceAtLeast(1)
+
+        val gap = 20.dp
+        val maxContentWidth = 400.dp * effectiveCols + gap * (effectiveCols - 1)
+
+        if (effectiveCols <= 1) {
+            Column(
+                modifier = Modifier.widthIn(max = maxContentWidth).fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                sections.forEach { section ->
+                    val isVisible = evaluateVisibility(parseVisibility(section.visibility), entityStates)
+                    AnimatedVisibility(
+                        visible = isVisible,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically(),
+                    ) {
+                        SectionContent(section = section, entityStates = entityStates)
+                    }
+                }
+            }
+        } else {
+            Row(
+                modifier = Modifier.widthIn(max = maxContentWidth).fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(gap),
+                verticalAlignment = Alignment.Top,
+            ) {
+                for (colIndex in 0 until effectiveCols) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        sections
+                            .filterIndexed { idx, _ -> idx % effectiveCols == colIndex }
+                            .forEach { section ->
+                                val isVisible = evaluateVisibility(parseVisibility(section.visibility), entityStates)
+                                AnimatedVisibility(
+                                    visible = isVisible,
+                                    enter = fadeIn(),
+                                    exit = fadeOut(),
+                                ) {
+                                    SectionContent(section = section, entityStates = entityStates)
+                                }
+                            }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionContent(
+    section: LovelaceSection,
+    entityStates: Map<String, HaEntityState>,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        section.title?.let { title ->
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+            )
+        }
+        section.cards.forEach { card ->
+            LovelaceCard(card = card, entityStates = entityStates)
         }
     }
 }

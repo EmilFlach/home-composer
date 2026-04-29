@@ -2,7 +2,10 @@ package org.example.project
 
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.ComposeViewport
+import kotlin.js.ExperimentalWasmJsInterop
+import kotlin.js.js
 
+@OptIn(ExperimentalWasmJsInterop::class)
 fun notifyParent(): Unit = js("window.parent.postMessage('compose-ready', '*')")
 
 @OptIn(ExperimentalComposeUiApi::class)

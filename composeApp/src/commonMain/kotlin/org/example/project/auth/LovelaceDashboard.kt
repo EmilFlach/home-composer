@@ -32,6 +32,7 @@ data class LovelaceView(
     val sections: List<LovelaceSection> = emptyList(),
     val badges: List<JsonElement> = emptyList(),
     val strategy: LovelaceStrategy? = null,
+    @SerialName("max_columns") val maxColumns: Int? = null,
 )
 
 @Serializable

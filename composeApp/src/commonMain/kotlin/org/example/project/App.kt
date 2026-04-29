@@ -76,6 +76,7 @@ fun App() {
         ImageLoader.Builder(context)
             .components { add(KtorNetworkFetcherFactory(httpClient = httpClient)) }
             .crossfade(true)
+            .applyDiskCache()
             .build()
     }
 

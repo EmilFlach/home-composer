@@ -60,7 +60,7 @@ internal fun HeadingCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(top = if (isSubtitle) 4.dp else 8.dp, bottom = 4.dp),
+            .padding(top = if (isSubtitle) 4.dp else 16.dp, bottom = 4.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         if (text != null) {

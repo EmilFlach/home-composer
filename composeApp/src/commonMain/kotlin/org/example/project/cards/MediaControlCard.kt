@@ -64,6 +64,8 @@ import org.example.project.auth.isHaApiUrl
 import org.example.project.auth.resolveHaUrl
 import io.ktor.http.HttpHeaders as KtorHttpHeaders
 
+private val paletteCache = mutableMapOf<String, MediaPalette>()
+
 private const val SUPPORT_PAUSE = 1
 private const val SUPPORT_PREVIOUS_TRACK = 16
 private const val SUPPORT_NEXT_TRACK = 32
@@ -113,10 +115,10 @@ internal fun MediaControlCard(
     // Palette extraction
     val haConfig = LocalHomeAssistantConfig.current
     val platformContext = LocalPlatformContext.current
-    var palette by remember(coverUrl) { mutableStateOf<MediaPalette?>(null) }
+    var palette by remember(coverUrl) { mutableStateOf<MediaPalette?>(coverUrl?.let { paletteCache[it] }) }
     LaunchedEffect(coverUrl) {
-        palette = null
-        if (coverUrl == null) return@LaunchedEffect
+        if (coverUrl == null) { palette = null; return@LaunchedEffect }
+        if (paletteCache.containsKey(coverUrl)) return@LaunchedEffect
         val resolvedUrl = resolveHaUrl(haConfig?.baseUrl, coverUrl)
         val authToken = haConfig?.token?.takeIf { isHaApiUrl(resolvedUrl, haConfig.baseUrl) }
         val request = ImageRequest.Builder(platformContext)
@@ -133,7 +135,7 @@ internal fun MediaControlCard(
             .build()
         val result = SingletonImageLoader.get(platformContext).execute(request)
         val bitmapImage = (result as? SuccessResult)?.image as? BitmapImage
-        palette = bitmapImage?.let { extractMediaPalette(it) }
+        palette = bitmapImage?.let { extractMediaPalette(it) }?.also { paletteCache[coverUrl] = it }
     }
 
     // Animated colors
@@ -224,7 +226,7 @@ internal fun MediaControlCard(
                             else -> call("media_play")
                         }
                     },
-                    onStop = { call("media_stop") },
+                    onStop = { call("turn_off") },
                     onNext = { call("media_next_track") },
                 )
             }
