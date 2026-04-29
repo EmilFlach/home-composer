@@ -127,6 +127,9 @@ internal fun TileCard(
     val onToggle: (() -> Unit)? = if (isToggleable && entityId != null) {
         { handler(HaAction.Toggle(entityId), entityId) }
     } else null
+    val onMoreInfo: (() -> Unit)? = if (!isToggleable && entityId != null) {
+        { handler(HaAction.MoreInfo(entityId), entityId) }
+    } else null
 
     val cardShape = LocalCardShape.current
     val cardColors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
@@ -180,15 +183,20 @@ internal fun TileCard(
         }
     }
 
-    if (onToggle != null) {
-        Card(
+    when {
+        onToggle != null -> Card(
             onClick = onToggle,
             modifier = modifier.fillMaxWidth(),
             shape = cardShape,
             colors = cardColors,
         ) { TileBody() }
-    } else {
-        Card(
+        onMoreInfo != null -> Card(
+            onClick = onMoreInfo,
+            modifier = modifier.fillMaxWidth(),
+            shape = cardShape,
+            colors = cardColors,
+        ) { TileBody() }
+        else -> Card(
             modifier = modifier.fillMaxWidth(),
             shape = cardShape,
             colors = cardColors,

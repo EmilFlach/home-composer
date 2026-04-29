@@ -134,7 +134,8 @@ private fun HeadingBadge(
         return
     }
 
-    // Entity badge
+        // Entity badge
+    val registry = LocalHaRegistry.current
     val state = badge.entity?.let(entityStates::get)
     val badgeHaIcon: HaIcon? = if (badge.showIcon) {
         mdiStringToHaIcon(badge.icon ?: state?.icon, fallback = haEntityIcon(state, badge.entity))
@@ -159,7 +160,19 @@ private fun HeadingBadge(
                 "state" -> state?.formatBadgeState()
                 "name" -> badge.name ?: state?.friendlyName
                 "last_changed", "last_updated" -> null
-                else -> state?.attributeString(key)
+                else -> {
+                    val raw = state?.attributeString(key) ?: return@mapNotNull null
+                    val unit = state?.unitOfMeasurement
+                        ?: if ("temp" in key) {
+                            state?.attributeString("temperature_unit")
+                                ?: registry.temperatureUnit
+                        } else null
+                    if (unit != null && raw.toFloatOrNull() != null) {
+                        "${formatStateValue(raw, unit)} $unit"
+                    } else {
+                        raw
+                    }
+                }
             }
         }
         if (parts.isEmpty()) return
