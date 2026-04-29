@@ -127,11 +127,6 @@ internal fun MarkdownCardStub(config: LovelaceCardConfig, modifier: Modifier = M
 }
 
 @Composable
-internal fun PictureElementsCardStub(config: LovelaceCardConfig, modifier: Modifier = Modifier) {
-    StubScaffold(config, modifier)
-}
-
-@Composable
 internal fun PictureGlanceCardStub(config: LovelaceCardConfig, modifier: Modifier = Modifier) {
     StubScaffold(config, modifier) {
         if (config.entities.isNotEmpty()) {

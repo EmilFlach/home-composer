@@ -54,7 +54,7 @@ fun LovelaceCard(
         "markdown" -> MarkdownCardStub(config, modifier)
         "media-control" -> MediaControlCard(config, entityStates, modifier)
         "picture" -> PictureCard(config, entityStates, modifier)
-        "picture-elements" -> PictureElementsCardStub(config, modifier)
+        "picture-elements" -> PictureElementsCard(config, entityStates, modifier)
         "picture-entity" -> PictureEntityCard(config, entityStates, modifier)
         "picture-glance" -> PictureGlanceCardStub(config, modifier)
         "plant-status" -> PlantStatusCardStub(config, modifier)
