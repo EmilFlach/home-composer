@@ -90,6 +90,9 @@ class HomeAssistantWebSocketClient(
     private val _entityStatesLoaded = MutableStateFlow(false)
     val entityStatesLoaded: StateFlow<Boolean> = _entityStatesLoaded.asStateFlow()
 
+    private val _connectionStatus = MutableStateFlow<ConnectionStatus>(ConnectionStatus.Checking)
+    val connectionStatus: StateFlow<ConnectionStatus> = _connectionStatus.asStateFlow()
+
     // area_id -> area_name
     private val _areas = MutableStateFlow<Map<String, String>>(emptyMap())
     // entity_id -> area_id
@@ -177,6 +180,7 @@ class HomeAssistantWebSocketClient(
     }
 
     suspend fun connect(config: HomeAssistantConfig) {
+        _connectionStatus.value = ConnectionStatus.Checking
         var nextId = 1L
         val pendingRequests = mutableMapOf<Long, PendingRequest>()
         var registriesReceived = 0
@@ -200,6 +204,7 @@ class HomeAssistantWebSocketClient(
                     }
 
                     "auth_ok" -> {
+                        _connectionStatus.value = ConnectionStatus.Connected
                         sendJob = launch {
                             for (msg in _serviceCallChannel) send(Frame.Text(msg))
                         }
@@ -255,7 +260,10 @@ class HomeAssistantWebSocketClient(
                         send(Frame.Text("""{"id":$floorId,"type":"config/floor_registry/list"}"""))
                     }
 
-                    "auth_invalid" -> error("Authentication failed")
+                    "auth_invalid" -> {
+                        _connectionStatus.value = ConnectionStatus.Disconnected("Authentication failed")
+                        error("Authentication failed")
+                    }
 
                     "result" -> {
                         val id = element["id"]?.jsonPrimitive?.longOrNull ?: continue
@@ -448,6 +456,7 @@ class HomeAssistantWebSocketClient(
             }
         }
         } catch (_: Exception) { }
+        _connectionStatus.value = ConnectionStatus.Disconnected("Connection lost")
     }
 
     private fun maybeSaveRegistry() {

@@ -48,7 +48,6 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.example.project.auth.AppPreferences
-import org.example.project.auth.ConnectionStatus
 import org.example.project.auth.HomeAssistantClient
 import org.example.project.auth.HomeAssistantConfig
 import androidx.compose.ui.unit.sp
@@ -62,8 +61,6 @@ import org.example.project.cards.LocalHaHistoryProvider
 import org.example.project.cards.LocalHaRegistry
 import kotlin.time.Duration.Companion.milliseconds
 
-private const val CONNECTION_POLL_INTERVAL_MS = 30_000L
-
 @Composable
 fun DashboardScreen(
     config: HomeAssistantConfig,
@@ -76,18 +73,7 @@ fun DashboardScreen(
     onThemeChange: (androidx.compose.ui.graphics.Color) -> Unit = {},
     onLogout: () -> Unit = {},
 ) {
-    var connectionStatus by remember { mutableStateOf<ConnectionStatus>(ConnectionStatus.Checking) }
-    LaunchedEffect(client, config) {
-        while (true) {
-            connectionStatus = ConnectionStatus.Checking
-            client.verify(config)
-                .onSuccess { connectionStatus = ConnectionStatus.Connected }
-                .onFailure {
-                    connectionStatus = ConnectionStatus.Disconnected(it.message ?: "Unknown error")
-                }
-            delay(CONNECTION_POLL_INTERVAL_MS.milliseconds)
-        }
-    }
+    val connectionStatus by wsClient.connectionStatus.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(wsClient, config, lifecycleOwner) {
         var backoffMs = 1_000L
