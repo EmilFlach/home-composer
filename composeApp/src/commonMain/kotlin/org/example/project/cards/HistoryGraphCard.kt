@@ -54,7 +54,6 @@ internal val LocalHaHistoryProvider =
 @Composable
 internal fun HistoryGraphCard(
     config: LovelaceCardConfig,
-    entityStates: Map<String, HaEntityState>,
     modifier: Modifier = Modifier,
 ) {
     if (config.entities.isEmpty()) {
@@ -104,7 +103,6 @@ internal fun HistoryGraphCard(
             config.entities.forEach { entityId ->
                 HistoryEntityRow(
                     entityId = entityId,
-                    entityState = entityStates[entityId],
                     series = seriesByEntity[entityId],
                     hoursToShow = hoursToShow,
                     isLoading = !hasLoaded,
@@ -117,11 +115,11 @@ internal fun HistoryGraphCard(
 @Composable
 private fun HistoryEntityRow(
     entityId: String,
-    entityState: HaEntityState?,
     series: HaHistorySeries?,
     hoursToShow: Int,
     isLoading: Boolean,
 ) {
+    val entityState = rememberEntityState(entityId)
     val displayName = entityState?.friendlyName ?: entityId
     val unit = entityState?.unitOfMeasurement
     val currentValue = entityState?.let { formatStateValue(it.state, unit) }

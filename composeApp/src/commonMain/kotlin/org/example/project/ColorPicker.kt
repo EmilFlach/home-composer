@@ -37,7 +37,12 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.CompositionLocalProvider
 import kotlin.math.abs
+import kotlinx.coroutines.flow.MutableStateFlow
+import org.example.project.auth.HaEntityState
+import org.example.project.cards.LocalEntityStatesFlow
+import org.example.project.cards.LocalEntityStatesLoaded
 import org.example.project.cards.WeatherForecastCard
 
 // ── Color conversion helpers ──────────────────────────────────────────────────
@@ -143,7 +148,9 @@ fun ColorPickerDialog(
                 // nested AppTheme. The dialog chrome stays on the active theme until
                 // the user clicks Apply.
                 val previewDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-                val previewStates = remember { buildShowcaseEntityStates() }
+                val previewFlow = remember {
+                    MutableStateFlow<Map<String, HaEntityState>?>(buildShowcaseEntityStates())
+                }
                 val previewConfig = remember { showcaseCardConfig("weather-forecast", "weather.home") }
                 Text(
                     text = "Preview",
@@ -151,17 +158,21 @@ fun ColorPickerDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 AppTheme(darkTheme = previewDark, seedColor = currentColor) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.background),
+                    CompositionLocalProvider(
+                        LocalEntityStatesFlow provides previewFlow,
+                        LocalEntityStatesLoaded provides true,
                     ) {
-                        WeatherForecastCard(
-                            config = previewConfig,
-                            entityStates = previewStates,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.background),
+                        ) {
+                            WeatherForecastCard(
+                                config = previewConfig,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
                     }
                 }
             }

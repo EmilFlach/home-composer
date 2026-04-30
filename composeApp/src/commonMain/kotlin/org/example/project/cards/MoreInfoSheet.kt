@@ -76,11 +76,10 @@ import kotlin.math.roundToInt
 @Composable
 fun MoreInfoSheet(
     entityId: String,
-    entityStates: Map<String, HaEntityState>,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val state = entityStates[entityId]
+    val state = rememberEntityState(entityId)
     val domain = entityId.substringBefore('.')
     val registry = LocalHaRegistry.current
     val handler = LocalHaActionHandler.current

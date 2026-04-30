@@ -55,6 +55,7 @@ import androidx.compose.material.icons.filled.Blinds
 import kotlinx.coroutines.isActive
 import org.example.project.auth.HomeAssistantWebSocketClient
 import org.example.project.cards.HaAction
+import org.example.project.cards.LocalEntityStatesFlow
 import org.example.project.cards.LocalEntityStatesLoaded
 import org.example.project.cards.LocalHaActionHandler
 import org.example.project.cards.LocalHaHistoryProvider
@@ -97,7 +98,6 @@ fun DashboardScreen(
     val dashboards by wsClient.dashboards.collectAsStateWithLifecycle()
     val dashboardConfigs by wsClient.dashboardConfigs.collectAsStateWithLifecycle()
     val dashboardErrors by wsClient.dashboardErrors.collectAsStateWithLifecycle()
-    val entityStates by wsClient.entityStates.collectAsStateWithLifecycle()
     val entityStatesLoaded by wsClient.entityStatesLoaded.collectAsStateWithLifecycle()
     val haRegistry by wsClient.haRegistry.collectAsStateWithLifecycle()
     var moreInfoEntityId by remember { mutableStateOf<String?>(null) }
@@ -108,7 +108,7 @@ fun DashboardScreen(
                 is HaAction.None -> Unit
                 is HaAction.Toggle -> {
                     val entityId = action.entity ?: contextEntity ?: return@provides
-                    val currentState = wsClient.entityStates.value[entityId]
+                    val currentState = wsClient.entityStates.value?.get(entityId)
                     if (currentState != null) {
                         val newStateStr = if (currentState.state == "on") "off" else "on"
                         wsClient.setOptimisticState(entityId, currentState.copy(state = newStateStr))
@@ -143,13 +143,13 @@ fun DashboardScreen(
         },
         LocalHaRegistry provides haRegistry,
         LocalEntityStatesLoaded provides entityStatesLoaded,
+        LocalEntityStatesFlow provides wsClient.entityStates,
     ) {
         var defaultDashboardKey by remember { mutableStateOf(appPreferences.defaultDashboardKey) }
         LovelaceDashboardList(
             dashboards = dashboards,
             configs = dashboardConfigs,
             errors = dashboardErrors,
-            entityStates = entityStates,
             connectionStatus = connectionStatus,
             darkTheme = darkTheme,
             onToggleDarkMode = onToggleDarkMode,
@@ -168,7 +168,6 @@ fun DashboardScreen(
         moreInfoEntityId?.let { entityId ->
             MoreInfoSheet(
                 entityId = entityId,
-                entityStates = entityStates,
                 onDismiss = { moreInfoEntityId = null },
             )
         }

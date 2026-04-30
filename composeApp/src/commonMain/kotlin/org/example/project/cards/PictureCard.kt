@@ -32,7 +32,6 @@ import io.ktor.http.HttpHeaders
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
-import org.example.project.auth.HaEntityState
 import org.example.project.auth.LocalHomeAssistantConfig
 import org.example.project.auth.attributeString
 import org.example.project.auth.isHaApiUrl
@@ -41,14 +40,12 @@ import org.example.project.auth.resolveHaUrl
 @Composable
 internal fun PictureCard(
     config: LovelaceCardConfig,
-    entityStates: Map<String, HaEntityState>,
     modifier: Modifier = Modifier,
 ) {
     val raw = config.raw
     val explicitImage = stringField(raw, "image")
     val imageEntityId = stringField(raw, "image_entity")
-    val imageEntityPicture = imageEntityId
-        ?.let(entityStates::get)
+    val imageEntityPicture = rememberEntityState(imageEntityId)
         ?.attributeString("entity_picture")
     val imageEntityFallback = imageEntityId?.takeIf { it.startsWith("camera.") }
         ?.let { "/api/camera_proxy/$it" }

@@ -2,7 +2,6 @@ package org.example.project.cards
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import org.example.project.auth.HaEntityState
 import org.example.project.auth.attributeString
 import org.example.project.auth.friendlyName
 import org.example.project.auth.unitOfMeasurement
@@ -10,12 +9,11 @@ import org.example.project.auth.unitOfMeasurement
 @Composable
 internal fun PictureEntityCard(
     config: LovelaceCardConfig,
-    entityStates: Map<String, HaEntityState>,
     modifier: Modifier = Modifier,
 ) {
     val raw = config.raw
     val entityId = config.entity
-    val state = entityId?.let(entityStates::get)
+    val state = rememberEntityState(entityId)
 
     val explicitImage = stringField(raw, "image")
     val cameraImage = entityId?.takeIf { isCameraEntity(it) }

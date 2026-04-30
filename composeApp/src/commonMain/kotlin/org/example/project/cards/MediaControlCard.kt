@@ -56,7 +56,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import org.example.project.auth.HaEntityState
 import org.example.project.auth.attributeString
 import org.example.project.auth.friendlyName
 import org.example.project.auth.LocalHomeAssistantConfig
@@ -70,7 +69,6 @@ private val paletteCache = mutableMapOf<String, MediaPalette>()
 @Composable
 internal fun MediaControlCard(
     config: LovelaceCardConfig,
-    entityStates: Map<String, HaEntityState>,
     modifier: Modifier = Modifier,
 ) {
     val entityId = config.entity
@@ -78,7 +76,7 @@ internal fun MediaControlCard(
         UnknownCardStub(config, modifier)
         return
     }
-    val state = entityStates[entityId]
+    val state = rememberEntityState(entityId)
 
     val title = state?.attributeString("media_title")
     val artist = state?.attributeString("media_artist")

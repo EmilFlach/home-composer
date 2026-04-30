@@ -15,7 +15,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import org.example.project.auth.HaEntityState
 import org.example.project.auth.formatStateValue
 import org.example.project.auth.friendlyName
 import org.example.project.auth.unitOfMeasurement
@@ -23,11 +22,10 @@ import org.example.project.auth.unitOfMeasurement
 @Composable
 internal fun SensorCard(
     config: LovelaceCardConfig,
-    entityStates: Map<String, HaEntityState>,
     modifier: Modifier = Modifier,
 ) {
     val entityId = config.entity
-    val state: HaEntityState? = entityId?.let { entityStates[it] }
+    val state = rememberEntityState(entityId)
 
     val displayName = config.nameText
         ?: config.title

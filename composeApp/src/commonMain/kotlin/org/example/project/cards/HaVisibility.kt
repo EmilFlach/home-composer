@@ -70,6 +70,22 @@ private fun parseStringOrList(element: JsonElement?): List<String> = when (eleme
     else -> emptyList()
 }
 
+internal fun extractEntityIds(conditions: List<HaCondition>): Set<String> {
+    val result = mutableSetOf<String>()
+    fun visit(c: HaCondition) {
+        when (c) {
+            is HaCondition.State -> result.add(c.entity)
+            is HaCondition.NumericState -> result.add(c.entity)
+            is HaCondition.And -> c.conditions.forEach { visit(it) }
+            is HaCondition.Or -> c.conditions.forEach { visit(it) }
+            is HaCondition.Not -> c.conditions.forEach { visit(it) }
+            HaCondition.Unknown -> Unit
+        }
+    }
+    conditions.forEach { visit(it) }
+    return result
+}
+
 internal fun evaluateVisibility(
     conditions: List<HaCondition>,
     entityStates: Map<String, HaEntityState>,

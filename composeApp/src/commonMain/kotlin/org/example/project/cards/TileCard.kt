@@ -38,12 +38,11 @@ import kotlin.math.roundToInt
 @Composable
 internal fun TileCard(
     config: LovelaceCardConfig,
-    entityStates: Map<String, HaEntityState>,
     modifier: Modifier = Modifier,
 ) {
     val raw = config.raw
     val entityId = config.entity
-    val state = entityId?.let(entityStates::get)
+    val state = rememberEntityState(entityId)
 
     val registry = LocalHaRegistry.current
     val displayName = config.nameConfig

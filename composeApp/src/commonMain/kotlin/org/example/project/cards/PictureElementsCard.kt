@@ -31,6 +31,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.network.NetworkHeaders
@@ -38,14 +39,16 @@ import coil3.network.httpHeaders
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import io.ktor.http.HttpHeaders
-import org.example.project.auth.LocalHomeAssistantConfig
-import org.example.project.auth.isHaApiUrl
-import org.example.project.auth.resolveHaUrl
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import org.example.project.auth.HaEntityState
+import org.example.project.auth.LocalHomeAssistantConfig
+import org.example.project.auth.isHaApiUrl
+import org.example.project.auth.resolveHaUrl
 import org.example.project.auth.attributeString
 import org.example.project.auth.friendlyName
 import org.example.project.auth.icon
@@ -59,23 +62,35 @@ import org.example.project.icons.mdiStringToHaIcon
 @Composable
 internal fun PictureElementsCard(
     config: LovelaceCardConfig,
-    entityStates: Map<String, HaEntityState>,
     modifier: Modifier = Modifier,
 ) {
     val raw = config.raw
     val explicitImage = stringField(raw, "image")
     val cameraImage = stringField(raw, "camera_image")?.let { "/api/camera_proxy/$it" }
     val imageEntityId = stringField(raw, "image_entity")
-    val imageEntityPicture = imageEntityId
-        ?.let(entityStates::get)
-        ?.attributeString("entity_picture")
+
+    val elements = parseElements(raw)
+    val entityIds = remember(raw) {
+        buildSet {
+            config.entity?.let { add(it) }
+            imageEntityId?.let { add(it) }
+            collectElementEntityIds(raw, this)
+        }
+    }
+
+    val flow = LocalEntityStatesFlow.current
+    val entityStates: Map<String, HaEntityState> = remember(flow, entityIds) {
+        flow.map { states -> states?.filterKeys { it in entityIds } ?: emptyMap() }.distinctUntilChanged()
+    }.collectAsStateWithLifecycle(
+        initialValue = flow.value?.filterKeys { it in entityIds } ?: emptyMap()
+    ).value
+
+    val imageEntityPicture = imageEntityId?.let(entityStates::get)?.attributeString("entity_picture")
     val stateImage = stateImageUrl(raw, config.entity, entityStates)
     val imageUrl = stateImage ?: explicitImage ?: imageEntityPicture ?: cameraImage
 
     val explicitAspectRatio = stringField(raw, "aspect_ratio")?.let(::parseAspectRatio)
     val altText = stringField(raw, "alt_text") ?: config.title ?: config.nameText
-
-    val elements = parseElements(raw)
 
     PictureElementsScaffold(
         imageUrl = imageUrl,
@@ -537,6 +552,15 @@ private data class ElementStyle(
     val translateXFraction: Float = 0f,
     val translateYFraction: Float = 0f,
 )
+
+private fun collectElementEntityIds(raw: JsonObject?, into: MutableSet<String>) {
+    val arr = raw?.get("elements") as? JsonArray ?: return
+    fun collect(obj: JsonObject) {
+        stringField(obj, "entity")?.let { into.add(it) }
+        (obj["elements"] as? JsonArray)?.forEach { (it as? JsonObject)?.let { c -> collect(c) } }
+    }
+    arr.forEach { (it as? JsonObject)?.let { c -> collect(c) } }
+}
 
 private fun parseElements(raw: JsonObject?): List<PictureElement> {
     val arr = raw?.get("elements") as? JsonArray ?: return emptyList()

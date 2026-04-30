@@ -39,7 +39,6 @@ import org.example.project.auth.friendlyName
 @Composable
 internal fun WeatherForecastCard(
     config: LovelaceCardConfig,
-    entityStates: Map<String, HaEntityState>,
     modifier: Modifier = Modifier,
 ) {
     val entityId = config.entity
@@ -48,7 +47,7 @@ internal fun WeatherForecastCard(
         return
     }
 
-    val entityState = entityStates[entityId]
+    val entityState = rememberEntityState(entityId)
 
     Card(
         modifier = modifier.fillMaxWidth(),

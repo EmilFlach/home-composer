@@ -18,11 +18,23 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -33,31 +45,72 @@ import org.example.project.auth.HaEntityState
 
 internal val LocalEntityStatesLoaded = compositionLocalOf { true }
 
+internal val LocalEntityStatesFlow: ProvidableCompositionLocal<StateFlow<Map<String, HaEntityState>?>> =
+    compositionLocalOf { MutableStateFlow<Map<String, HaEntityState>?>(null) }
+
+@Composable
+internal fun rememberEntityState(entityId: String?): HaEntityState? {
+    if (entityId == null) return null
+    val flow = LocalEntityStatesFlow.current
+    // Seed with flow.value so first composition is instant — no null→actual transition.
+    return remember(flow, entityId) {
+        flow.map { states -> states?.get(entityId) }.distinctUntilChanged()
+    }.collectAsStateWithLifecycle(initialValue = flow.value?.get(entityId)).value
+}
+
+@Composable
+internal fun rememberVisibilityState(conditions: List<HaCondition>): Boolean {
+    if (conditions.isEmpty()) return true
+    val entityIds = remember(conditions) { extractEntityIds(conditions) }
+    if (entityIds.isEmpty()) return true
+    val flow = LocalEntityStatesFlow.current
+    val snapshot: Map<String, HaEntityState> = remember(flow, entityIds) {
+        flow.map { states -> states?.filterKeys { it in entityIds } ?: emptyMap() }.distinctUntilChanged()
+    }.collectAsStateWithLifecycle(
+        initialValue = flow.value?.filterKeys { it in entityIds } ?: emptyMap()
+    ).value
+    return evaluateVisibility(conditions, snapshot)
+}
 
 @Composable
 fun LovelaceCard(
     card: JsonElement,
-    entityStates: Map<String, HaEntityState>,
     modifier: Modifier = Modifier,
 ) {
     val config = card.toCardConfig()
-    val visibility = parseVisibility(config.raw?.get("visibility"))
-    val isVisible = evaluateVisibility(visibility, entityStates)
+    val visibility = remember(config.raw) { parseVisibility(config.raw?.get("visibility")) }
+    val isVisible = rememberVisibilityState(visibility)
     AnimatedVisibility(
         visible = isVisible,
         enter = fadeIn() + expandVertically(),
         exit = fadeOut() + shrinkVertically(),
     ) {
-    val entityStatesLoaded = LocalEntityStatesLoaded.current
-    if (!entityStatesLoaded && (config.entity != null || config.entities.isNotEmpty())) {
+    val entityStatesFlow = LocalEntityStatesFlow.current
+    val entityStatesLoaded by remember(entityStatesFlow) {
+        entityStatesFlow.map { it != null }.distinctUntilChanged()
+    }.collectAsStateWithLifecycle(entityStatesFlow.value != null)
+    // Check entity state before any early return so composable calls are unconditional.
+    val primaryEntityState = rememberEntityState(config.entity)
+    val isTransientState = primaryEntityState?.state == "unavailable" ||
+        primaryEntityState?.state == "unknown"
+    // Grace period: keep skeleton for unavailable/unknown entities after initial load,
+    // since HA often delivers state_changed updates within seconds of connecting.
+    var gracePeriodExpired by remember { mutableStateOf(false) }
+    LaunchedEffect(entityStatesLoaded) {
+        if (!entityStatesLoaded) { gracePeriodExpired = false; return@LaunchedEffect }
+        delay(2000)
+        gracePeriodExpired = true
+    }
+    val hasEntityConfig = config.entity != null || config.entities.isNotEmpty()
+    if (hasEntityConfig && (!entityStatesLoaded || (isTransientState && !gracePeriodExpired))) {
         SkeletonCard(modifier)
         return@AnimatedVisibility
     }
     when (config.type) {
-        "sensor" -> SensorCard(config, entityStates, modifier)
+        "sensor" -> SensorCard(config, modifier)
 
         "alarm-panel" -> AlarmPanelCardStub(config, modifier)
-        "area" -> AreaCard(config, entityStates, modifier)
+        "area" -> AreaCard(config, modifier)
         "button" -> ButtonCardStub(config, modifier)
         "conditional" -> ConditionalCardStub(config, modifier)
         "entities" -> EntitiesCardStub(config, modifier)
@@ -65,28 +118,28 @@ fun LovelaceCard(
         "gauge" -> GaugeCardStub(config, modifier)
         "glance" -> GlanceCardStub(config, modifier)
         "grid" -> GridCardStub(config, modifier)
-        "heading" -> HeadingCard(config, entityStates, modifier)
-        "history-graph" -> HistoryGraphCard(config, entityStates, modifier)
+        "heading" -> HeadingCard(config, modifier)
+        "history-graph" -> HistoryGraphCard(config, modifier)
         "horizontal-stack" -> HorizontalStackCardStub(config, modifier)
         "iframe" -> IframeCardStub(config, modifier)
-        "light" -> TileCard(config, entityStates, modifier)
+        "light" -> TileCard(config, modifier)
         "logbook" -> LogbookCardStub(config, modifier)
         "map" -> MapCardStub(config, modifier)
         "markdown" -> MarkdownCardStub(config, modifier)
-        "media-control" -> MediaControlCard(config, entityStates, modifier)
-        "picture" -> PictureCard(config, entityStates, modifier)
-        "picture-elements" -> PictureElementsCard(config, entityStates, modifier)
-        "picture-entity" -> PictureEntityCard(config, entityStates, modifier)
+        "media-control" -> MediaControlCard(config, modifier)
+        "picture" -> PictureCard(config, modifier)
+        "picture-elements" -> PictureElementsCard(config, modifier)
+        "picture-entity" -> PictureEntityCard(config, modifier)
         "picture-glance" -> PictureGlanceCardStub(config, modifier)
         "plant-status" -> PlantStatusCardStub(config, modifier)
         "shopping-list" -> ShoppingListCardStub(config, modifier)
         "statistic" -> StatisticCardStub(config, modifier)
         "statistics-graph" -> StatisticsGraphCardStub(config, modifier)
         "thermostat" -> ThermostatCardStub(config, modifier)
-        "tile" -> TileCard(config, entityStates, modifier)
+        "tile" -> TileCard(config, modifier)
         "todo-list" -> TodoListCardStub(config, modifier)
-        "vertical-stack" -> VerticalStackCard(config, entityStates, modifier)
-        "weather-forecast" -> WeatherForecastCard(config, entityStates, modifier)
+        "vertical-stack" -> VerticalStackCard(config, modifier)
+        "weather-forecast" -> WeatherForecastCard(config, modifier)
 
         else -> UnknownCardStub(config, modifier)
     }

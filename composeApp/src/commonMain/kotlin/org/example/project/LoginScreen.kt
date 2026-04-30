@@ -38,8 +38,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.CompositionLocalProvider
+import kotlinx.coroutines.flow.MutableStateFlow
+import org.example.project.auth.HaEntityState
 import org.example.project.auth.LoginEvent
 import org.example.project.auth.LoginUiState
+import org.example.project.cards.LocalEntityStatesFlow
+import org.example.project.cards.LocalEntityStatesLoaded
 import org.example.project.cards.SensorCard
 import org.example.project.cards.WeatherForecastCard
 
@@ -52,7 +57,9 @@ fun LoginScreen(
     onToggleDarkMode: () -> Unit = {},
 ) {
     var showConnectSheet by remember { mutableStateOf(false) }
-    val showcase = remember { buildShowcaseEntityStates() }
+    val showcaseFlow = remember {
+        MutableStateFlow<Map<String, HaEntityState>?>(buildShowcaseEntityStates())
+    }
 
     val backgroundModifier = Modifier.background(MaterialTheme.colorScheme.background)
 
@@ -152,28 +159,35 @@ fun LoginScreen(
             item { ShowcaseLabel("Preview") }
 
             item {
-                WeatherForecastCard(
-                    config = showcaseCardConfig("weather-forecast", "weather.home"),
-                    entityStates = showcase,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                CompositionLocalProvider(
+                    LocalEntityStatesFlow provides showcaseFlow,
+                    LocalEntityStatesLoaded provides true,
+                ) {
+                    WeatherForecastCard(
+                        config = showcaseCardConfig("weather-forecast", "weather.home"),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
 
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                CompositionLocalProvider(
+                    LocalEntityStatesFlow provides showcaseFlow,
+                    LocalEntityStatesLoaded provides true,
                 ) {
-                    SensorCard(
-                        config = showcaseCardConfig("sensor", "sensor.temperature"),
-                        entityStates = showcase,
-                        modifier = Modifier.weight(1f),
-                    )
-                    SensorCard(
-                        config = showcaseCardConfig("sensor", "sensor.humidity"),
-                        entityStates = showcase,
-                        modifier = Modifier.weight(1f),
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        SensorCard(
+                            config = showcaseCardConfig("sensor", "sensor.temperature"),
+                            modifier = Modifier.weight(1f),
+                        )
+                        SensorCard(
+                            config = showcaseCardConfig("sensor", "sensor.humidity"),
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
             }
 

@@ -82,13 +82,16 @@ class HomeAssistantWebSocketClient(
     private val _rawEntityStates = MutableStateFlow<Map<String, HaEntityState>>(emptyMap())
     private val _optimisticStates = MutableStateFlow<Map<String, HaEntityState>>(emptyMap())
 
-    val entityStates: StateFlow<Map<String, HaEntityState>> = combine(
-        _rawEntityStates, _optimisticStates
-    ) { raw, optimistic -> raw + optimistic }
-        .stateIn(clientScope, SharingStarted.Eagerly, emptyMap())
-
     private val _entityStatesLoaded = MutableStateFlow(false)
     val entityStatesLoaded: StateFlow<Boolean> = _entityStatesLoaded.asStateFlow()
+
+    // Null until the initial get_states response arrives, ensuring entityStatesLoaded and
+    // the entity data are always in sync within the same Compose frame (no "unavailable" flash).
+    val entityStates: StateFlow<Map<String, HaEntityState>?> = combine(
+        _rawEntityStates, _optimisticStates, _entityStatesLoaded
+    ) { raw, optimistic, loaded ->
+        if (loaded) raw + optimistic else null
+    }.stateIn(clientScope, SharingStarted.Eagerly, null)
 
     private val _connectionStatus = MutableStateFlow<ConnectionStatus>(ConnectionStatus.Checking)
     val connectionStatus: StateFlow<ConnectionStatus> = _connectionStatus.asStateFlow()

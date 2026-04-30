@@ -15,6 +15,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -22,6 +23,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -46,7 +50,6 @@ private val DOMAIN_CHIP_ORDER = listOf(
 @Composable
 internal fun AreaCard(
     config: LovelaceCardConfig,
-    entityStates: Map<String, HaEntityState>,
     modifier: Modifier = Modifier,
 ) {
     val raw = config.raw
@@ -59,8 +62,21 @@ internal fun AreaCard(
     val showCamera = boolField(raw, "show_camera", default = false)
     val navigationPath = stringField(raw, "navigation_path")
 
-    val areaEntityIds = areaId?.let(registry::entitiesInArea).orEmpty()
-    val areaStates: List<HaEntityState> = areaEntityIds.mapNotNull(entityStates::get)
+    val areaEntityIds = remember(areaId, registry) { areaId?.let(registry::entitiesInArea).orEmpty() }
+    val flow = LocalEntityStatesFlow.current
+    val areaStates = remember(flow, areaEntityIds) {
+        flow.map { states ->
+            val s = states ?: return@map emptyList()
+            areaEntityIds.fold(mutableListOf<HaEntityState>()) { acc, id ->
+                s[id]?.let { acc.add(it) }
+                acc
+            }.toList()
+        }.distinctUntilChanged()
+    }.collectAsStateWithLifecycle(
+        initialValue = flow.value?.let { s ->
+            areaEntityIds.mapNotNull { s[it] }
+        } ?: emptyList()
+    ).value
 
     val cameraImage = if (showCamera) {
         areaStates.firstOrNull { it.domain == "camera" }

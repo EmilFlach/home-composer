@@ -43,7 +43,6 @@ import org.example.project.icons.mdiStringToHaIcon
 @Composable
 internal fun HeadingCard(
     config: LovelaceCardConfig,
-    entityStates: Map<String, HaEntityState>,
     modifier: Modifier = Modifier,
 ) {
     val raw = config.raw
@@ -96,7 +95,7 @@ internal fun HeadingCard(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 badges.forEach { badge ->
-                    HeadingBadge(badge = badge, entityStates = entityStates)
+                    HeadingBadge(badge = badge)
                 }
             }
         }
@@ -104,11 +103,9 @@ internal fun HeadingCard(
 }
 
 @Composable
-private fun HeadingBadge(
-    badge: HeadingBadgeConfig,
-    entityStates: Map<String, HaEntityState>,
-) {
-    if (!evaluateVisibility(badge.visibility, entityStates)) return
+private fun HeadingBadge(badge: HeadingBadgeConfig) {
+    val isVisible = rememberVisibilityState(badge.visibility)
+    if (!isVisible) return
     if (badge.type == "button") {
         val label = badge.name ?: badge.text
         if (badge.icon == null && label == null) return
@@ -136,7 +133,7 @@ private fun HeadingBadge(
 
         // Entity badge
     val registry = LocalHaRegistry.current
-    val state = badge.entity?.let(entityStates::get)
+    val state = rememberEntityState(badge.entity)
     val badgeHaIcon: HaIcon? = if (badge.showIcon) {
         mdiStringToHaIcon(badge.icon ?: state?.icon, fallback = haEntityIcon(state, badge.entity))
     } else null

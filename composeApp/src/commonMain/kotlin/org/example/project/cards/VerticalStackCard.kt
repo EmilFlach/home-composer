@@ -12,8 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import kotlinx.serialization.json.JsonArray
-import org.example.project.auth.HaEntityState
-
 private val CardRadius = 16.dp
 private val InnerRadius = 4.dp
 
@@ -43,7 +41,6 @@ private fun cardGroupShape(index: Int, size: Int): Shape = when {
 @Composable
 internal fun VerticalStackCard(
     config: LovelaceCardConfig,
-    entityStates: Map<String, HaEntityState>,
     modifier: Modifier = Modifier,
 ) {
     val rawCards = (config.raw?.get("cards") as? JsonArray) ?: return
@@ -66,7 +63,7 @@ internal fun VerticalStackCard(
                 LocalCardGroupPosition provides position,
             ) {
                 Box(modifier = Modifier.fillMaxWidth()) {
-                    LovelaceCard(card = cardElement, entityStates = entityStates)
+                    LovelaceCard(card = cardElement)
                 }
             }
         }

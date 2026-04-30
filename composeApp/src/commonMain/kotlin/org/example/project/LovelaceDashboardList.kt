@@ -12,10 +12,8 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -43,21 +41,20 @@ import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.delay
 import org.example.project.auth.ConnectionStatus
 import org.example.project.auth.DEFAULT_DASHBOARD_KEY
-import org.example.project.auth.HaEntityState
 import org.example.project.auth.LovelaceConfig
 import org.example.project.auth.LovelaceDashboard
 import org.example.project.auth.LovelaceSection
 import org.example.project.auth.LovelaceView
+import org.example.project.cards.LocalEntityStatesLoaded
 import org.example.project.cards.LovelaceCard
-import org.example.project.cards.evaluateVisibility
 import org.example.project.cards.parseVisibility
+import org.example.project.cards.rememberVisibilityState
 
 @Composable
 fun LovelaceDashboardList(
     dashboards: List<LovelaceDashboard>,
     configs: Map<String, LovelaceConfig>,
     errors: Map<String, String>,
-    entityStates: Map<String, HaEntityState>,
     connectionStatus: ConnectionStatus,
     darkTheme: Boolean,
     onToggleDarkMode: () -> Unit,
@@ -140,7 +137,6 @@ fun LovelaceDashboardList(
                 else -> ViewContent(
                     entry = selectedEntry,
                     view = selectedView,
-                    entityStates = entityStates,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -218,7 +214,6 @@ private fun ViewTabs(
 private fun ViewContent(
     entry: DashboardEntry,
     view: LovelaceView?,
-    entityStates: Map<String, HaEntityState>,
     modifier: Modifier = Modifier,
 ) {
     if (entry.error != null) {
@@ -253,19 +248,18 @@ private fun ViewContent(
         EmptyState(title = "No view", message = "Select a view above.", modifier = modifier)
         return
     }
-    LazyView(view = view, entityStates = entityStates, modifier = modifier)
+    LazyView(view = view, modifier = modifier)
 }
 
 @Composable
 private fun LazyView(
     view: LovelaceView,
-    entityStates: Map<String, HaEntityState>,
     modifier: Modifier = Modifier,
 ) {
     val rootCards = view.cards
     val sections = view.sections
     val listState = rememberLazyListState()
-    val statesLoaded = entityStates.isNotEmpty()
+    val statesLoaded = LocalEntityStatesLoaded.current
 
     LaunchedEffect(statesLoaded) {
         if (statesLoaded) listState.scrollToItem(0)
@@ -294,7 +288,7 @@ private fun LazyView(
         }
 
         items(rootCards.size, key = { "root-card-$it" }) { index ->
-            LovelaceCard(card = rootCards[index], entityStates = entityStates)
+            LovelaceCard(card = rootCards[index])
         }
 
         val maxColumns = view.maxColumns
@@ -302,18 +296,21 @@ private fun LazyView(
             item(key = "sections-grid") {
                 SectionsGrid(
                     sections = sections,
-                    entityStates = entityStates,
                     maxColumns = maxColumns,
                 )
             }
         } else {
             sections.forEachIndexed { sectionIndex, section ->
-                val isVisible = evaluateVisibility(parseVisibility(section.visibility), entityStates)
-                if (isVisible) {
-                    item(key = "section-$sectionIndex") {
+                item(key = "section-$sectionIndex") {
+                    val conditions = remember(section.visibility) { parseVisibility(section.visibility) }
+                    val isVisible = rememberVisibilityState(conditions)
+                    AnimatedVisibility(
+                        visible = isVisible,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically(clip = false),
+                    ) {
                         SectionContent(
                             section = section,
-                            entityStates = entityStates,
                             modifier = Modifier.animateItem(),
                         )
                     }
@@ -326,7 +323,6 @@ private fun LazyView(
 @Composable
 private fun SectionsGrid(
     sections: List<LovelaceSection>,
-    entityStates: Map<String, HaEntityState>,
     maxColumns: Int,
     modifier: Modifier = Modifier,
 ) {
@@ -351,13 +347,14 @@ private fun SectionsGrid(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 sections.forEach { section ->
-                    val isVisible = evaluateVisibility(parseVisibility(section.visibility), entityStates)
+                    val conditions = remember(section.visibility) { parseVisibility(section.visibility) }
+                    val isVisible = rememberVisibilityState(conditions)
                     AnimatedVisibility(
                         visible = isVisible,
                         enter = fadeIn() + expandVertically(),
                         exit = fadeOut() + shrinkVertically(clip = false),
                     ) {
-                        SectionContent(section = section, entityStates = entityStates)
+                        SectionContent(section = section)
                     }
                 }
             }
@@ -375,13 +372,14 @@ private fun SectionsGrid(
                         sections
                             .filterIndexed { idx, _ -> idx % effectiveCols == colIndex }
                             .forEach { section ->
-                                val isVisible = evaluateVisibility(parseVisibility(section.visibility), entityStates)
+                                val conditions = remember(section.visibility) { parseVisibility(section.visibility) }
+                                val isVisible = rememberVisibilityState(conditions)
                                 AnimatedVisibility(
                                     visible = isVisible,
                                     enter = fadeIn(),
                                     exit = fadeOut(),
                                 ) {
-                                    SectionContent(section = section, entityStates = entityStates)
+                                    SectionContent(section = section)
                                 }
                             }
                     }
@@ -394,7 +392,6 @@ private fun SectionsGrid(
 @Composable
 private fun SectionContent(
     section: LovelaceSection,
-    entityStates: Map<String, HaEntityState>,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -409,7 +406,7 @@ private fun SectionContent(
             )
         }
         section.cards.forEach { card ->
-            LovelaceCard(card = card, entityStates = entityStates)
+            LovelaceCard(card = card)
         }
     }
 }
